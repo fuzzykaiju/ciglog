@@ -1577,16 +1577,20 @@ class CigLogTracker {
                 </ul>
                 <h4>Version 1.1.1 | 09-05-2026</h4>
                 <ul>
-                    <li>Addition of new column in Homescreen: Minutes of Life Lost.</li>
+                    <li>Added new column in Homescreen - Minutes of Life Lost.</li>
                     <li>Integration of Minutes of Life Lost in Charts and Status Bar.</li>
                     <li>Minor text formatting.</li>
                 </ul>
                 <h4>Version 1.1.2 | 09-05-2026</h4>
                 <ul>
-                    <li>Smart money formatting — no redundant decimals.</li>
-                    <li>Smart MLL formatting — no leading zeros.</li>
-                    <li>Stats bar redesigned — equal 4-column grid layout.</li>
+                    <li>Smart money formatting - no redundant decimals.</li>
+                    <li>Smart MLL formatting - no leading zeros.</li>
+                    <li>Stats bar redesigned - equal 4-column grid layout.</li>
                     <li>Cigarette count field now allows blank input; Save button disabled until valid.</li>
+                </ul>
+                <h4>Version 1.1.3 | 09-05-2026</h4>
+                <ul>
+                    <li>Added Google Font - Roboto Mono.</li>                    
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
