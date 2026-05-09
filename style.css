@@ -18,7 +18,7 @@
     --high-intensity: #FF9595;
     --chart-smoked: #c8c8c8;
     --chart-cravings: #909090;
-    --column-count: 6;
+    --column-count: 7;
 }
 
 body {
@@ -1274,6 +1274,15 @@ input[type="number"] {
 
 .intensity-dot {
     background: linear-gradient(45deg, var(--low-intensity), var(--medium-intensity), var(--high-intensity));
+}
+
+.lifelost-dot {
+    background-color: var(--red);
+}
+
+.money-decimal {
+    font-size: 0.75rem;
+    opacity: 0.8;
 }
 
 .chart-container {

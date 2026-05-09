@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  CigLog v1.0  —  Cigarette Tracker
+//  CigLog  —  Cigarette Logger
 // ─────────────────────────────────────────────────────────────────────────────
 
 class CigLogTracker {
@@ -90,7 +90,8 @@ class CigLogTracker {
         this.statSmoked   = $('totalSmoked');
         this.statCravings = $('totalCravings');
         this.statMoney    = $('moneySpent');
-        this.charts       = { smoked: null, cravings: null, intensity: null };
+        this.statLifeLost = $('lifeLost');
+        this.charts       = { smoked: null, cravings: null, intensity: null, lifelost: null };
         this.activeTab    = 'smoked';
 
         // Import
@@ -318,7 +319,7 @@ class CigLogTracker {
             this.currencyInput.disabled = false;
             this.timezoneInput.disabled = false;
             this._closeModal('settings');
-            this.createTodayTitle.textContent = `Your journey to fewer cigarettes starts here!`;
+            this.createTodayTitle.textContent = `Get started!`;
             this._openModal('createToday');
         } else {
             // Price-only update
@@ -475,6 +476,26 @@ class CigLogTracker {
 
     // ── Table rendering ───────────────────────────────────────────────────────
 
+    // ── MLL formatters ────────────────────────────────────────────────────────
+
+    // For stats bar / tooltip: two largest units
+    _fmtMLL(mins) {
+        if (mins < 60)      return `${mins}m`;
+        if (mins < 1440)  { const h = Math.floor(mins/60),  m = mins%60;        return `${h}h${m ? ' '+m+'m' : ''}`; }
+        if (mins < 10080) { const d = Math.floor(mins/1440), h = Math.floor((mins%1440)/60); return `${d}d${h ? ' '+h+'h' : ''}`; }
+        if (mins < 43200) { const w = Math.floor(mins/10080), d = Math.floor((mins%10080)/1440); return `${w}wk${d ? ' '+d+'d' : ''}`; }
+        if (mins < 525600){ const mo = Math.floor(mins/43200), w = Math.floor((mins%43200)/10080); return `${mo}mo${w ? ' '+w+'wk' : ''}`; }
+        const yr = Math.floor(mins/525600), mo = Math.floor((mins%525600)/43200);
+        return `${yr}yr${mo ? ' '+mo+'mo' : ''}`;
+    }
+
+    // For table row: always HHh MMm two-line two-digit
+    _fmtMLLRow(mins) {
+        const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+        const mm = String(mins % 60).padStart(2, '0');
+        return `${hh}h<br>${mm}m`;
+    }
+
     _renderTable() {
         this.entriesTable.innerHTML = '';
 
@@ -491,6 +512,12 @@ class CigLogTracker {
             const smokeCount = entry.smoked.reduce((s, x) => s + x.count, 0);
             const money      = entry.smoked.reduce((s, x) =>
                 s + x.count * (x.pricePerCigarette ?? this.settings.cigarettePrice), 0);
+            const mllMins    = smokeCount * 20;
+
+            // Format money: integer + decimal in smaller span, no currency symbol
+            const moneyInt  = Math.floor(money);
+            const moneyDec  = (money % 1).toFixed(2).slice(1); // ".00" etc
+            const moneyHtml = `${moneyInt}<span class="money-decimal">${moneyDec}</span>`;
 
             const isSkipped = entry.skipped && !entry.clean &&
                               !entry.cravings.length && !entry.smoked.length;
@@ -498,7 +525,6 @@ class CigLogTracker {
             const row = document.createElement('div');
             row.className = `entry-row${isSkipped ? ' entry-skipped' : ''}`;
 
-            // Info button: ⚠️ for unacknowledged skipped days, ↓ otherwise
             const infoBtn = isSkipped
                 ? `<button class="info-btn skipped-btn" data-date="${entry.date}"><i class="fa-solid fa-triangle-exclamation"></i></button>`
                 : `<button class="info-btn" data-date="${entry.date}"><i class="fa-solid fa-angle-down"></i></button>`;
@@ -513,9 +539,8 @@ class CigLogTracker {
                      data-date="${entry.date}" data-type="craving">${cravCount}</div>
                 <div class="entry-cell clickable-cell ${smokeCount ? 'value-positive' : 'value-zero'}"
                      data-date="${entry.date}" data-type="smoke">${smokeCount}</div>
-                <div class="entry-cell ${smokeCount ? 'value-positive' : 'value-zero'}">
-                    ${this.settings.currency}${money.toFixed(2)}
-                </div>
+                <div class="entry-cell ${smokeCount ? 'value-positive' : 'value-zero'}">${moneyHtml}</div>
+                <div class="entry-cell ${mllMins ? 'value-positive' : 'value-zero'}">${this._fmtMLLRow(mllMins)}</div>
                 <div class="entry-cell">${infoBtn}</div>
                 <div class="entry-cell">
                     <button class="edit-btn" data-date="${entry.date}"><i class="fa-solid fa-ellipsis-vertical"></i></button>
@@ -1031,9 +1056,11 @@ class CigLogTracker {
         const totalCravings = filtered.reduce((s, e) => s + e.cravings.length, 0);
         const totalMoney    = filtered.reduce((s, e) => s + e.smoked.reduce((x, y) =>
             x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        const totalMLL      = totalSmoked * 20;
         this.statSmoked.textContent   = totalSmoked;
         this.statCravings.textContent = totalCravings;
         this.statMoney.textContent    = `${this.settings.currency}${totalMoney.toFixed(2)}`;
+        this.statLifeLost.textContent = this._fmtMLL(totalMLL);
 
         return filtered;
     }
@@ -1043,7 +1070,7 @@ class CigLogTracker {
         document.querySelectorAll('.chart-tab').forEach(t => {
             t.classList.toggle('active', t.dataset.tab === tab);
         });
-        ['smoked', 'cravings', 'intensity'].forEach(key => {
+        ['smoked', 'cravings', 'intensity', 'lifelost'].forEach(key => {
             document.getElementById(`chartPanel${key.charAt(0).toUpperCase() + key.slice(1)}`)
                 .style.display = key === tab ? 'block' : 'none';
         });
@@ -1054,6 +1081,7 @@ class CigLogTracker {
         if (this.activeTab === 'smoked')    this._renderChartSmoked();
         if (this.activeTab === 'cravings')  this._renderChartCravings();
         if (this.activeTab === 'intensity') this._renderChartIntensity();
+        if (this.activeTab === 'lifelost')  this._renderChartLifelost();
     }
 
     _renderChartSmoked() {
@@ -1157,6 +1185,85 @@ class CigLogTracker {
                     ],
                 },
                 options: this._chartOptions(st, { stacked: true }),
+            }
+        );
+    }
+
+    _renderChartLifelost() {
+        const filtered = this._filteredEntries();
+        const st = this._chartStyle();
+
+        if (this.charts.lifelost) { this.charts.lifelost.destroy(); this.charts.lifelost = null; }
+
+        const self = this;
+        this.charts.lifelost = new Chart(
+            document.getElementById('chartLifelost').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: filtered.map(e => e.date),
+                    datasets: [{
+                        label: 'Life Lost (min)',
+                        data: filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0) * 20),
+                        borderColor: '#FF9595',
+                        backgroundColor: 'rgba(255,149,149,0.07)',
+                        pointBackgroundColor: '#FF9595',
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        borderWidth: 1.5,
+                        tension: 0.3,
+                        fill: true,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: st.textPrimary,
+                                font: { family: st.font, size: 11 },
+                                boxWidth: 12,
+                                padding: 10,
+                            },
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(26,26,26,0.95)',
+                            titleColor: st.textPrimary,
+                            bodyColor: st.textPrimary,
+                            borderColor: 'rgba(217,217,217,0.25)',
+                            borderWidth: 1,
+                            cornerRadius: 6,
+                            callbacks: {
+                                label: (item) => ` ${self._fmtMLL(item.raw)}`,
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            grid:  { color: st.gridColor },
+                            ticks: { color: st.textSecond, maxRotation: 45,
+                                     font: { family: st.font, size: 10 } },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid:  { color: st.gridColor },
+                            ticks: {
+                                stepSize: 20,
+                                color: st.textSecond,
+                                font: { family: st.font, size: 10 },
+                                callback: (val) => {
+                                    if (val < 60)  return `${val}m`;
+                                    const h = Math.floor(val / 60);
+                                    const m = val % 60;
+                                    return m ? `${h}h ${m}m` : `${h}h`;
+                                },
+                            },
+                        },
+                    },
+                    animation: { duration: 400, easing: 'easeOutQuart' },
+                },
             }
         );
     }
@@ -1441,35 +1548,35 @@ class CigLogTracker {
     _openReadme() {
         const body = document.getElementById('readmeBody');
         body.innerHTML = `
-            <h3>CigLog v1.0 — Cigarette Tracker</h3>
-            <p>A privacy-first PWA to help you track cravings, cigarettes, and progress. Everything runs in your browser — no accounts, no servers, no ads.</p>
+            <h3>CigLog - Cigarette Logger</h3>
+            <p>A data-driven PWA to help you log cigarettes craved and smoked, and get analytics for money spent and minutes of life lost.</p>
 
-            <h3>✨ Features</h3>
+            <h3><i class="fa-regular fa-circle-check"></i> Features</h3>
             <ul>
-                <li>Daily log — cravings count, cigarettes smoked, money spent</li>
+                <li>Daily log — cravings count, cigarettes smoked, money spent, minutes of life lost</li>
                 <li>Precise tracking — log each event with exact time</li>
                 <li>Intensity levels — low 🟢, medium 🟡, high 🔴 for every craving</li>
                 <li>Smart time presets — "just now", "5 min ago", "1 hour ago"</li>
                 <li>Timeline view — all events of a day in chronological order</li>
                 <li>Notes — add personal notes to each day</li>
                 <li>Full edit mode — modify or delete any entry</li>
-                <li>Interactive charts — smoked, cravings, and intensity breakdown</li>
+                <li>Interactive charts — smoked, cravings, intensity, and life lost</li>
                 <li>CSV export / import — backup or analyse your data elsewhere</li>
                 <li>Auto-detected skipped days — with option to mark as clean</li>
                 <li>Installable — works offline, add to home screen</li>
             </ul>
 
-            <h3>📝 How to Use</h3>
+            <h3><i class="fa-solid fa-wrench"></i> How to Use</h3>
             <ul>
                 <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
                 <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
                 <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
                 <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
-                <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days to acknowledge them</li>
+                <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days for more actions</li>
                 <li>Open the side menu ☰ for charts, export/import, and settings</li>
             </ul>
 
-            <h3>🛠 Tech Stack</h3>
+            <h3><i class="fa-solid fa-code"></i> Tech Stack</h3>
             <ul>
                 <li>Plain HTML, CSS, Vanilla JS — no frameworks</li>
                 <li>Chart.js for charts, Font Awesome for icons</li>
@@ -1477,8 +1584,21 @@ class CigLogTracker {
                 <li>Service Worker + Web App Manifest for offline &amp; installability</li>
             </ul>
 
-            <p class="motivation">"Every craving you resist brings you closer to freedom."</p>
-            <div class="version">v1.0 · <a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
+            <h3><i class="fa-regular fa-clipboard"></i> Release Notes</h3>
+            <ul>
+                <h4>Version 1.1.0 | 09-05-2026</h4>
+                <ul>
+                    <li>Literature changes and corrections.
+                </ul>
+                <h4>Version 1.1.1 | 09-05-2026</h4>
+                <ul>
+                    <li>Addition of new column in Homescreen: Minutes of Life Lost.</li>
+                    <li>Integration of Minutes of Life Lost in Charts and Status Bar.</li>
+                    <li>Minor text formatting.</li>
+                </ul>
+            </ul>
+            
+            <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
         `;
         this._openModal('readme');
     }

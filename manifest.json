@@ -1,8 +1,8 @@
 {
   "id": "/ciglog/index.html",
-  "name": "CigLog - Cigarette Tracker",
+  "name": "CigLog - Cigarette Logger",
   "short_name": "CigLog",
-  "description": "Track cravings, cigarettes and progress on your journey to smoke-free.",
+  "description": "Log cigarettes craved and smoked.",
   "start_url": "/ciglog/index.html",
   "display": "standalone",
   "orientation": "portrait",
@@ -33,14 +33,14 @@
       "src": "screenshot-mobile.png",
       "sizes": "390x844",
       "type": "image/png",
-      "label": "Ashless home screen"
+      "label": "CigLog home screen"
     },
     {
       "src": "screenshot-wide.png",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Ashless on desktop"
+      "label": "Ciglog on desktop"
     }
   ]
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CigLog v1.0 - Cigarette Tracker</title>
+    <title>CigLog - Cigarette Tracker</title>
     <meta name="theme-color" content="#262626">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,7 +19,7 @@
     <header class="fixed-header">
         <div class="header-content">
             <div class="title-section">
-                <h1>CigLog v1.0</h1>
+                <h1>CigLog</h1>
                 <p id="lastSmokedTimer" class="tagline timer-label" aria-label="Tap for exact duration">Loading...</p>
                 <div id="timerPopover" class="timer-popover" style="display:none;"></div>
             </div>
@@ -31,6 +31,7 @@
             <div class="header-cell" data-tooltip="Cravings"><i class="fa-solid fa-face-tired"></i></div>
             <div class="header-cell" data-tooltip="Cigarettes Smoked"><i class="fa-solid fa-smoking"></i></div>
             <div class="header-cell" data-tooltip="Money Spent"><i class="fa-solid fa-money-check-dollar"></i></div>
+            <div class="header-cell" data-tooltip="~ Minutes of Life Lost"><i class="fa-solid fa-skull"></i></div>
             <div class="header-cell" data-tooltip="Info & Notes"><i class="fa-solid fa-circle-info"></i></div>
             <div class="header-cell" data-tooltip="Edit Day"><i class="fa-solid fa-pen-to-square"></i></div>
         </div>
@@ -93,8 +94,8 @@
                 <h2 id="createTodayTitle"></h2>
             </div>
             <div class="modal-body" style="text-align:center;">
-                <p>Log habits, spot patterns, track progress, and take control.</p>
-                <p class="help-text">Everything you track is saved locally — never shared.</p>
+                <p>Log as soon as you crave or smoke.<br>CigLog transforms entries into analytics.</p>
+                <p class="help-text">All data is stored locally.</p>
                 <div class="form-actions">
                     <button id="createTodayYes" class="btn btn-primary">Continue</button>
                 </div>
@@ -252,7 +253,7 @@
             </button>
             <button id="aboutBtn" class="menu-item">
                 <span class="menu-icon"><i class="fa-solid fa-book-open"></i></span>
-                <span>About v2.9</span>
+                <span>About</span>
             </button>
             <button id="readmeBtn" class="menu-item">
                 <span class="menu-icon"><i class="fa-brands fa-readme"></i></span>
@@ -296,6 +297,10 @@
                         <span class="stat-label">Money Spent</span>
                         <span id="moneySpent" class="stat-value">0</span>
                     </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Life Lost</span>
+                        <span id="lifeLost" class="stat-value">0m</span>
+                    </div>
                 </div>
                 <div class="chart-tabs">
                     <button class="chart-tab active" data-tab="smoked">
@@ -307,10 +312,14 @@
                     <button class="chart-tab" data-tab="intensity">
                         <span class="tab-dot intensity-dot"></span> Intensity
                     </button>
+                    <button class="chart-tab" data-tab="lifelost">
+                        <span class="tab-dot lifelost-dot"></span> Life Lost
+                    </button>
                 </div>
                 <div class="chart-container" id="chartPanelSmoked"><canvas id="chartSmoked"></canvas></div>
                 <div class="chart-container" id="chartPanelCravings" style="display:none;"><canvas id="chartCravings"></canvas></div>
                 <div class="chart-container" id="chartPanelIntensity" style="display:none;"><canvas id="chartIntensity"></canvas></div>
+                <div class="chart-container" id="chartPanelLifelost" style="display:none;"><canvas id="chartLifelost"></canvas></div>
             </div>
         </div>
     </div>
@@ -319,22 +328,22 @@
     <div id="aboutModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>About CigLog v1.0</h2>
+                <h2>About CigLog</h2>
                 <button class="close-btn close-about">&times;</button>
             </div>
             <div class="modal-body about-body">
-                <p>CigLog is a privacy-first cigarette tracker. Everything runs in your browser — no accounts, no servers, no ads.</p>
+                <p>CigLog is a cigarette craving &amp; smoking logger. Log your daily cigarettes craved and smoked, and get analytics for your money spent and minutes of life lost.<br>Log immediately &amp; honestly - CigLog transforms entries into analytics, charts, &amp; timelines to help you spot patterns across various time ranges.</p>
                 <h3>How to use:</h3>
                 <ul>
                     <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
                     <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
                     <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
                     <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
-                    <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days to acknowledge them</li>
+                    <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days for more actions</li>
                     <li>Use the side menu for charts, export/import, and settings</li>
                 </ul>
-                <p class="motivation">"Every craving you resist brings you closer to freedom!"</p>
-                <div class="version">Version 1.0 | Made with ❤️ for a smoke-free life</div>
+                <p class="motivation">"Log smokes and cravings - CigLog shows the toll."</p>
+                <div class="version">Version 1.1.1 | 09-05-2026 | 12:50</div>
             </div>
         </div>
     </div>
@@ -412,7 +421,7 @@
             </div>
             <div class="modal-body" style="padding:20px;text-align:center;">
                 <p style="margin-bottom:12px;color:var(--text-primary);">This will permanently delete <strong>all entries and settings</strong>.</p>
-                <p style="margin-bottom:24px;color:var(--text-secondary);font-size:0.9rem;">This cannot be undone.</p>
+                <p style="margin-bottom:24px;color:var(--text-secondary);font-size:0.9rem;">This action cannot be undone.</p>
                 <div style="display:flex;gap:12px;justify-content:center;">
                     <button id="cancelReset" class="btn btn-ghost" style="flex:1;">Cancel</button>
                     <button id="confirmReset" class="btn btn-danger" style="flex:1;"><i class="fa-regular fa-trash-can"></i> Reset</button>
