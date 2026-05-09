@@ -1540,12 +1540,12 @@ class CigLogTracker {
             <ul>
                 <li>Daily log - cravings count, cigarettes smoked, money spent, minutes of life lost</li>
                 <li>Precise tracking - log each event with exact time</li>
-                <li>Craving level - low <i class="fa-solid fa-circle" style="color: rgb(198, 224, 180);"></i>, mid <i class="fa-solid fa-circle" style="color: rgb(255, 230, 153);"></i>, high <i class="fa-solid fa-circle" style="color: rgb(255, 149, 149);"></i> for every craving</li>
+                <li>Craving intensity - low <i class="fa-solid fa-circle" style="color: rgb(198, 224, 180);"></i>, mid <i class="fa-solid fa-circle" style="color: rgb(255, 230, 153);"></i>, high <i class="fa-solid fa-circle" style="color: rgb(255, 149, 149);"></i> for every craving</li>
                 <li>Smart time presets - "just now", "5 min ago", "1 hour ago"</li>
                 <li>Timeline view - all events of a day in chronological order</li>
                 <li>Notes - add personal notes to each day</li>
                 <li>Full edit mode - modify or delete any entry</li>
-                <li>Interactive charts - smoked, cravings, level, and life lost</li>
+                <li>Interactive charts - smoked, cravings, intensity, and life lost</li>
                 <li>CSV export / import - backup or analyse your data elsewhere</li>
                 <li>Auto-detected skipped days - with option to mark as clean</li>
                 <li>Installable - works offline, add to home screen</li>
@@ -1553,7 +1553,7 @@ class CigLogTracker {
 
             <h3><i class="fa-solid fa-wrench"></i> How to Use</h3>
             <ul>
-                <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; level</li>
+                <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
                 <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
                 <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
                 <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
@@ -1586,7 +1586,6 @@ class CigLogTracker {
                     <li>Smart money formatting — no redundant decimals.</li>
                     <li>Smart MLL formatting — no leading zeros.</li>
                     <li>Stats bar redesigned — equal 4-column grid layout.</li>
-                    <li>Craving level renamed from Intensity to Level throughout.</li>
                     <li>Cigarette count field now allows blank input; Save button disabled until valid.</li>
                 </ul>
             </ul>
