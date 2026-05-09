@@ -190,7 +190,7 @@ class CigLogTracker {
             () => this._updateSaveBtn('smoke'));
         this.cigaretteCount.addEventListener('input', () => {
             const v = parseInt(this.cigaretteCount.value);
-            if (v < 1 || isNaN(v)) this.cigaretteCount.value = 1;
+            if (!isNaN(v) && v < 1) this.cigaretteCount.value = 1;
             this._updateSaveBtn('smoke');
         });
 
@@ -489,11 +489,13 @@ class CigLogTracker {
         return `${yr}yr${mo ? ' '+mo+'mo' : ''}`;
     }
 
-    // For table row: always HHh MMm two-line two-digit
+    // For table row: smart format, no leading zeros, two-line only when both h and m exist
     _fmtMLLRow(mins) {
-        const hh = String(Math.floor(mins / 60)).padStart(2, '0');
-        const mm = String(mins % 60).padStart(2, '0');
-        return `${hh}h<br>${mm}m`;
+        if (mins === 0) return '0m';
+        if (mins < 60)  return `${mins}m`;
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return m ? `${h}h<br>${m}m` : `${h}h`;
     }
 
     _renderTable() {
@@ -514,10 +516,9 @@ class CigLogTracker {
                 s + x.count * (x.pricePerCigarette ?? this.settings.cigarettePrice), 0);
             const mllMins    = smokeCount * 20;
 
-            // Format money: integer + decimal in smaller span, no currency symbol
-            const moneyInt  = Math.floor(money);
-            const moneyDec  = (money % 1).toFixed(2).slice(1); // ".00" etc
-            const moneyHtml = `${moneyInt}<span class="money-decimal">${moneyDec}</span>`;
+            // Format money: smart decimals, no currency symbol
+            const moneyFmt = parseFloat(money.toFixed(2)).toString();
+            const moneyHtml = moneyFmt;
 
             const isSkipped = entry.skipped && !entry.clean &&
                               !entry.cravings.length && !entry.smoked.length;
@@ -737,8 +738,10 @@ class CigLogTracker {
                        !!document.querySelector('.intensity-btn.selected');
             this.saveCravingBtn.disabled = !ok;
         } else {
+            const countVal = this.cigaretteCount.value.trim();
+            const count    = parseInt(countVal);
             const ok = this._timeOk(this.smokeHH, this.smokeMM) &&
-                       parseInt(this.cigaretteCount.value) > 0;
+                       countVal !== '' && !isNaN(count) && count >= 1;
             this.saveSmokeBtn.disabled = !ok;
         }
     }
@@ -1059,8 +1062,11 @@ class CigLogTracker {
         const totalMLL      = totalSmoked * 20;
         this.statSmoked.textContent   = totalSmoked;
         this.statCravings.textContent = totalCravings;
-        this.statMoney.textContent    = `${this.settings.currency}${totalMoney.toFixed(2)}`;
+        this.statMoney.textContent    = parseFloat(totalMoney.toFixed(2)).toString();
         this.statLifeLost.textContent = this._fmtMLL(totalMLL);
+        // Update currency label in stats bar
+        const currLabel = document.getElementById('currencyLabel');
+        if (currLabel) currLabel.textContent = this.settings.currency;
 
         return filtered;
     }
@@ -1158,30 +1164,9 @@ class CigLogTracker {
                 data: {
                     labels: filtered.map(e => e.date),
                     datasets: [
-                        {
-                            label: 'Low',
-                            data: low,
-                            backgroundColor: 'rgba(198,224,180,0.85)',
-                            borderColor: '#C6E0B4',
-                            borderWidth: 1,
-                            borderRadius: 2,
-                        },
-                        {
-                            label: 'Medium',
-                            data: medium,
-                            backgroundColor: 'rgba(255,230,153,0.85)',
-                            borderColor: '#FFE699',
-                            borderWidth: 1,
-                            borderRadius: 2,
-                        },
-                        {
-                            label: 'High',
-                            data: high,
-                            backgroundColor: 'rgba(255,149,149,0.85)',
-                            borderColor: '#FF9595',
-                            borderWidth: 1,
-                            borderRadius: 2,
-                        },
+                        { label: 'Low',    data: low,    backgroundColor: 'rgba(198,224,180,0.85)', borderColor: '#C6E0B4', borderWidth: 1, borderRadius: 2 },
+                        { label: 'Mid',    data: medium, backgroundColor: 'rgba(255,230,153,0.85)', borderColor: '#FFE699', borderWidth: 1, borderRadius: 2 },
+                        { label: 'High',   data: high,   backgroundColor: 'rgba(255,149,149,0.85)', borderColor: '#FF9595', borderWidth: 1, borderRadius: 2 },
                     ],
                 },
                 options: this._chartOptions(st, { stacked: true }),
@@ -1553,22 +1538,22 @@ class CigLogTracker {
 
             <h3><i class="fa-regular fa-circle-check"></i> Features</h3>
             <ul>
-                <li>Daily log — cravings count, cigarettes smoked, money spent, minutes of life lost</li>
-                <li>Precise tracking — log each event with exact time</li>
-                <li>Intensity levels — low 🟢, medium 🟡, high 🔴 for every craving</li>
-                <li>Smart time presets — "just now", "5 min ago", "1 hour ago"</li>
-                <li>Timeline view — all events of a day in chronological order</li>
-                <li>Notes — add personal notes to each day</li>
-                <li>Full edit mode — modify or delete any entry</li>
-                <li>Interactive charts — smoked, cravings, intensity, and life lost</li>
-                <li>CSV export / import — backup or analyse your data elsewhere</li>
-                <li>Auto-detected skipped days — with option to mark as clean</li>
-                <li>Installable — works offline, add to home screen</li>
+                <li>Daily log - cravings count, cigarettes smoked, money spent, minutes of life lost</li>
+                <li>Precise tracking - log each event with exact time</li>
+                <li>Craving level - low <i class="fa-solid fa-circle" style="color: rgb(198, 224, 180);"></i>, mid <i class="fa-solid fa-circle" style="color: rgb(255, 230, 153);"></i>, high <i class="fa-solid fa-circle" style="color: rgb(255, 149, 149);"></i> for every craving</li>
+                <li>Smart time presets - "just now", "5 min ago", "1 hour ago"</li>
+                <li>Timeline view - all events of a day in chronological order</li>
+                <li>Notes - add personal notes to each day</li>
+                <li>Full edit mode - modify or delete any entry</li>
+                <li>Interactive charts - smoked, cravings, level, and life lost</li>
+                <li>CSV export / import - backup or analyse your data elsewhere</li>
+                <li>Auto-detected skipped days - with option to mark as clean</li>
+                <li>Installable - works offline, add to home screen</li>
             </ul>
 
             <h3><i class="fa-solid fa-wrench"></i> How to Use</h3>
             <ul>
-                <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
+                <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; level</li>
                 <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
                 <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
                 <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
@@ -1588,7 +1573,7 @@ class CigLogTracker {
             <ul>
                 <h4>Version 1.1.0 | 09-05-2026</h4>
                 <ul>
-                    <li>Literature changes and corrections.
+                    <li>Literature changes and corrections.</li>
                 </ul>
                 <h4>Version 1.1.1 | 09-05-2026</h4>
                 <ul>
@@ -1596,8 +1581,15 @@ class CigLogTracker {
                     <li>Integration of Minutes of Life Lost in Charts and Status Bar.</li>
                     <li>Minor text formatting.</li>
                 </ul>
+                <h4>Version 1.1.2 | 09-05-2026</h4>
+                <ul>
+                    <li>Smart money formatting — no redundant decimals.</li>
+                    <li>Smart MLL formatting — no leading zeros.</li>
+                    <li>Stats bar redesigned — equal 4-column grid layout.</li>
+                    <li>Craving level renamed from Intensity to Level throughout.</li>
+                    <li>Cigarette count field now allows blank input; Save button disabled until valid.</li>
+                </ul>
             </ul>
-            
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
         `;
         this._openModal('readme');

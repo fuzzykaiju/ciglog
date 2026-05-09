@@ -1292,14 +1292,12 @@ input[type="number"] {
 }
 
 .chart-stats {
-    display: flex;
-    justify-content: space-around;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     padding: 12px;
     background-color: var(--bg-secondary);
     border-radius: 8px;
     margin-top: 14px;
-    flex-wrap: wrap;
-    gap: 10px;
     border: 1px solid rgba(217, 217, 217, 0.1);
 }
 
@@ -1307,19 +1305,23 @@ input[type="number"] {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 5px;
-    min-width: 120px;
+    justify-content: center;
+    gap: 4px;
+    text-align: center;
+    padding: 4px 2px;
 }
 
 .stat-label {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: bold;
+    line-height: 1.2;
 }
 
 .stat-value {
     color: var(--text-primary);
-    font-size: 1.2rem;
-    font-weight: bold;
+    font-size: 0.85rem;
+    font-weight: normal;
 }
 
 /* Skipped / unacknowledged day rows */

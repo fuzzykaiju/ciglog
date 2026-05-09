@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CigLog - Cigarette Tracker</title>
+    <title>CigLog - Cigarette Logger</title>
     <meta name="theme-color" content="#262626">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -94,7 +94,7 @@
                 <h2 id="createTodayTitle"></h2>
             </div>
             <div class="modal-body" style="text-align:center;">
-                <p>Log as soon as you crave or smoke.<br>CigLog transforms entries into analytics.</p>
+                <p>Log entries as soon as you crave or smoke.<br>CigLog transforms these entries into analytics.</p>
                 <p class="help-text">All data is stored locally.</p>
                 <div class="form-actions">
                     <button id="createTodayYes" class="btn btn-primary">Continue</button>
@@ -286,19 +286,19 @@
                 </select>
                 <div class="chart-stats">
                     <div class="stat-item">
-                        <span class="stat-label">Cigarettes</span>
+                        <span class="stat-label">Smoked</span>
                         <span id="totalSmoked" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Cravings</span>
+                        <span class="stat-label">Craved</span>
                         <span id="totalCravings" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Money Spent</span>
+                        <span class="stat-label">Money<br><span id="currencyLabel"></span></span>
                         <span id="moneySpent" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Life Lost</span>
+                        <span class="stat-label">Life<br>Lost</span>
                         <span id="lifeLost" class="stat-value">0m</span>
                     </div>
                 </div>
@@ -310,7 +310,7 @@
                         <span class="tab-dot cravings-dot"></span> Cravings
                     </button>
                     <button class="chart-tab" data-tab="intensity">
-                        <span class="tab-dot intensity-dot"></span> Intensity
+                        <span class="tab-dot intensity-dot"></span> Level
                     </button>
                     <button class="chart-tab" data-tab="lifelost">
                         <span class="tab-dot lifelost-dot"></span> Life Lost
@@ -343,7 +343,7 @@
                     <li>Use the side menu for charts, export/import, and settings</li>
                 </ul>
                 <p class="motivation">"Log smokes and cravings - CigLog shows the toll."</p>
-                <div class="version">Version 1.1.1 | 09-05-2026 | 12:50</div>
+                <div class="version">Version 1.1.2 | 09-05-2026</div>
             </div>
         </div>
     </div>
