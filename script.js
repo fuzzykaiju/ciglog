@@ -93,6 +93,12 @@ class CigLogTracker {
         this.priceInput       = $('cigarettePrice');
         this.timezoneInput    = $('timezone');
         this.currencySymbol   = $('currencySymbol');
+        this.customTriggerToggle  = $('customTriggerToggle');
+        this.customTriggerSection = $('customTriggerSection');
+        this.customTriggerGroup   = $('customTriggerGroup');
+        this.exportImportGroup    = $('exportImportGroup');
+        this.csvFileSettings      = $('csvFileSettings');
+        this.csvFileFirstRun      = $('csvFileFirstRun');
 
         // Create-today modal
         this.createTodayTitle = $('createTodayTitle');
@@ -165,10 +171,6 @@ class CigLogTracker {
         // Menu items
         document.getElementById('chartBtn').addEventListener('click',
             () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderActiveTab(), 100); });
-        document.getElementById('exportBtn').addEventListener('click',
-            () => this._exportCSV());
-        document.getElementById('importBtn').addEventListener('click',
-            () => { this._closeMenu(); this._openModal('import'); });
         document.getElementById('settingsMenuBtn').addEventListener('click',
             () => this._openSettings());
         document.getElementById('aboutBtn').addEventListener('click',
@@ -188,9 +190,25 @@ class CigLogTracker {
         document.getElementById('saveSettings').addEventListener('click',
             () => this._saveSettings());
 
+        // Custom trigger toggle in settings
+        document.getElementById('customTriggerToggle').addEventListener('click',
+            () => this.customTriggerSection.classList.toggle('open'));
+
+        // Export/Import in settings
+        document.getElementById('exportSettingsBtn').addEventListener('click',
+            () => this._exportCSV());
+        document.getElementById('importSettingsBtn').addEventListener('click',
+            () => this.csvFileSettings.click());
+        this.csvFileSettings.addEventListener('change',
+            () => this._importCSV('settings'));
+
         // Create-today modal
         document.getElementById('createTodayYes').addEventListener('click',
             () => this._createTodayEntry());
+        document.getElementById('createTodayLoad').addEventListener('click',
+            () => this.csvFileFirstRun.click());
+        this.csvFileFirstRun.addEventListener('change',
+            () => this._importCSV('firstrun'));
 
         // Skipped day modal
         document.getElementById('skippedAddEntries').addEventListener('click', () => {
@@ -367,19 +385,25 @@ class CigLogTracker {
 
         if (!this.settings) {
             // First-time setup
-            this.settings = { currency, cigarettePrice: price, timezone, setupDate: new Date().toISOString() };
+            this.settings = { currency, cigarettePrice: price, timezone,
+                setupDate: new Date().toISOString(), customTriggers: [] };
             this._persist('settings');
-            // Re-enable fields for next time settings is opened
             this.currencyInput.disabled = false;
             this.timezoneInput.disabled = false;
             this._closeModal('settings');
             this.createTodayTitle.textContent = `Get started!`;
             this._openModal('createToday');
         } else {
-            // Price-only update
+            // Update price + custom triggers
             this.settings.cigarettePrice = price;
+            const custom = [
+                ($('customTrigger0')?.value || '').trim(),
+                ($('customTrigger1')?.value || '').trim(),
+                ($('customTrigger2')?.value || '').trim(),
+            ].filter(t => t.length > 0);
+            this.settings.customTriggers = custom;
             this._persist('settings');
-            this._toast('Settings saved successfully.');
+            this._toast('Settings saved ✓');
             this._closeModal('settings');
         }
     }
@@ -395,11 +419,23 @@ class CigLogTracker {
             this.timezoneInput.disabled = true;
             this.priceInput.disabled    = false;
             this.settingsTitle.textContent = 'Settings';
-            document.getElementById('saveSettings').textContent = 'Save';
+            document.getElementById('saveSettings').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save';
             this.closeSettingsBtn.style.display = 'block';
+            // Show custom triggers + export/import sections
+            this.customTriggerGroup.style.display  = 'flex';
+            this.exportImportGroup.style.display   = 'flex';
+            this.customTriggerSection.classList.remove('open');
+            // Populate custom trigger inputs
+            const custom = this.settings.customTriggers || [];
+            const $ = id => document.getElementById(id);
+            $('customTrigger0').value = custom[0] || '';
+            $('customTrigger1').value = custom[1] || '';
+            $('customTrigger2').value = custom[2] || '';
         } else {
-            // First run — no close button, start tracking label
-            document.getElementById('saveSettings').textContent = 'Start Tracking';
+            // First run — hide custom/export sections
+            this.customTriggerGroup.style.display = 'none';
+            this.exportImportGroup.style.display  = 'none';
+            document.getElementById('saveSettings').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Start Tracking';
             this.closeSettingsBtn.style.display = 'none';
         }
         this._openModal('settings');
@@ -1549,49 +1585,119 @@ class CigLogTracker {
         });
         document.body.appendChild(a); a.click();
         document.body.removeChild(a); URL.revokeObjectURL(url);
-        this._closeMenu();
     }
 
-    _importCSV() {
-        const file = this.csvFile.files[0];
+    _importCSV(source = 'settings') {
+        const file = source === 'firstrun'
+            ? this.csvFileFirstRun?.files[0]
+            : this.csvFileSettings?.files[0];
         if (!file) { this._toast('Please select a CSV file'); return; }
+
         const reader = new FileReader();
         reader.onload = (e) => {
+            // Step 1: Parse and validate BEFORE touching existing data
+            let parsed;
             try {
                 const rows = e.target.result.split('\n').filter(r => r.trim());
-                if (rows.length < 2) { this._toast('CSV is empty or invalid'); return; }
+                if (rows.length < 2) { this._toast('Import failed: file appears empty or invalid. Your existing data is safe.'); return; }
                 const byDate = {};
+                let validRows = 0;
                 for (let i = 1; i < rows.length; i++) {
                     const [date, time, type, value, price, ...noteParts] =
                         rows[i].split(',').map(s => s.trim());
-                    if (!date || !time) continue;
+                    if (!date || !time || !type) continue;
+                    // Validate date format dd-mm-yy
+                    if (!/^\d{2}-\d{2}-\d{2}$/.test(date)) continue;
+                    // Validate type
+                    const t = type.toLowerCase();
+                    if (t !== 'craving' && t !== 'smoked') continue;
                     const notes = noteParts.join(',').replace(/^"|"$/g, '');
                     if (!byDate[date]) byDate[date] = this._blankEntry(date);
                     if (!byDate[date].notes && notes) byDate[date].notes = notes;
-                    if (type.toLowerCase() === 'craving') {
-                        byDate[date].cravings.push({ time, intensity: value.toLowerCase() });
-                    } else if (type.toLowerCase() === 'smoked') {
+                    if (t === 'craving') {
+                        byDate[date].cravings.push({ time, intensity: value.toLowerCase(), triggers: [] });
+                    } else {
                         byDate[date].smoked.push({
                             time, count: parseInt(value) || 1,
                             pricePerCigarette: parseFloat(price) || this.settings.cigarettePrice,
+                            triggers: [],
                         });
                     }
+                    validRows++;
                 }
-                const imported = Object.values(byDate).sort((a, b) => this._byDateDesc(a, b));
+                if (validRows === 0) {
+                    this._toast('Import failed: no valid data found. Your existing data is safe.');
+                    return;
+                }
+                parsed = Object.values(byDate).sort((a, b) => this._byDateDesc(a, b));
+            } catch (err) {
+                this._toast('Import failed: file appears corrupt or invalid. Your existing data is safe.');
+                console.error(err);
+                return;
+            }
+
+            // Step 2: If first run — no existing data, import directly
+            if (source === 'firstrun') {
+                this.entries = parsed;
+                this._persist('entries');
+                this._closeModal('createToday');
+                this._ensureTodayExists();
+                this._renderTable();
+                this._startTimer();
+                this._toast(`Imported ${parsed.length} days of data ✓`);
+                // Reset file input
+                if (this.csvFileFirstRun) this.csvFileFirstRun.value = '';
+                return;
+            }
+
+            // Step 3: If existing data — show safety confirmation
+            const doImport = () => {
+                this.entries = parsed;
+                this._persist('entries');
+                this._closeModal('settings');
+                this._renderTable();
+                this._startTimer();
+                this._toast(`Imported ${parsed.length} days of data ✓`);
+                if (this.csvFileSettings) this.csvFileSettings.value = '';
+            };
+
+            if (this.entries.length > 0) {
                 this._confirm(
                     'Import Data',
-                    `Import ${imported.length} days of data? This replaces all current data.`,
+                    `You have existing data. Importing will replace it permanently. Export a backup first?`,
                     () => {
-                        this.entries = imported;
-                        this._persist('entries');
-                        this._closeModal('import');
-                        this._renderTable();
-                        this._toast('Data imported successfully!');
+                        // "Confirm" = Import Anyway
+                        doImport();
                     }
                 );
-            } catch (err) {
-                this._toast('Error reading CSV — check the format');
-                console.error(err);
+                // Override confirm button temporarily to also offer export
+                this.confirmOk.textContent = 'Import Anyway';
+                // Add Export & Continue button logic via toast chain
+                const existingCb = this._confirmCb;
+                this._confirmCb = existingCb;
+                // Offer export via a second confirm button swap
+                const exportAndContinue = () => {
+                    this._exportCSV();
+                    setTimeout(() => {
+                        this._confirm(
+                            'Backup Saved',
+                            'Your backup has been downloaded. Proceed with import?',
+                            doImport
+                        );
+                        this.confirmOk.textContent = 'Proceed with Import';
+                        this.confirmCancel.textContent = 'Cancel';
+                    }, 500);
+                };
+                // Replace cancel with Export & Continue temporarily
+                this.confirmCancel.textContent = 'Export & Continue';
+                const origCancelCb = () => this._closeModal('confirm');
+                this.confirmCancel.onclick = (e) => {
+                    e.stopImmediatePropagation();
+                    this._closeModal('confirm');
+                    exportAndContinue();
+                };
+            } else {
+                doImport();
             }
         };
         reader.readAsText(file);
@@ -1818,6 +1924,15 @@ class CigLogTracker {
                     <li>New feature added - Triggers.</li>
                     <li>Each craving or smoked entry can now have multiple triggers selected from a predefined list.</li>
                     <li>Info & Notes modal now displays Trigger information.</li>
+                </ul>
+                <h4>Version 1.2.1 | 12-05-2026</h4>
+                <ul>
+                    <li>Import and Export Log moved from menu to Settings modal.</li>
+                    <li>Custom Triggers (up to 3) can now be added in Settings.</li>
+                    <li>First-run onboarding redesigned - option to Start Fresh or Load from a previous file.</li>
+                    <li>Import now validates data before replacing existing entries.</li>
+                    <li>Import safety flow - option to export a backup before overwriting data.</li>
+                    <li>Menu simplified - Chart, Settings, About, Read Me, Reset only.</li>
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>

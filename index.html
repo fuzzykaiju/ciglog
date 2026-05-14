@@ -83,8 +83,37 @@
                     <select id="timezone" class="time-select"></select>
                     <p class="help-text">Timezone cannot be changed after setup</p>
                 </div>
+                <!-- Custom Triggers — shown only after setup -->
+                <div id="customTriggerGroup" class="form-group" style="display:none;">
+                    <button class="trigger-toggle-btn" id="customTriggerToggle" style="max-width:300px;">
+                        <i class="fa-solid fa-bolt"></i> Add Custom Triggers
+                    </button>
+                    <div id="customTriggerSection" class="trigger-section" style="max-width:300px;">
+                        <div class="custom-trigger-input-row">
+                            <i class="fa-solid fa-tag"></i>
+                            <input type="text" id="customTrigger0" maxlength="20" placeholder="Custom trigger name...">
+                        </div>
+                        <div class="custom-trigger-input-row">
+                            <i class="fa-solid fa-tag"></i>
+                            <input type="text" id="customTrigger1" maxlength="20" placeholder="Custom trigger name...">
+                        </div>
+                        <div class="custom-trigger-input-row">
+                            <i class="fa-solid fa-tag"></i>
+                            <input type="text" id="customTrigger2" maxlength="20" placeholder="Custom trigger name...">
+                        </div>
+                        <p class="help-text" style="margin-top:6px;">Up to 3 custom triggers</p>
+                    </div>
+                </div>
+                <!-- Export/Import — shown only after setup -->
+                <div id="exportImportGroup" class="form-group" style="display:none;">
+                    <div class="settings-export-import-row">
+                        <button id="exportSettingsBtn" class="btn btn-secondary"><i class="fa-solid fa-file-arrow-up"></i> Export Log</button>
+                        <button id="importSettingsBtn" class="btn btn-secondary"><i class="fa-solid fa-file-arrow-down"></i> Load Log</button>
+                    </div>
+                    <input type="file" id="csvFileSettings" accept=".csv" style="display:none;">
+                </div>
                 <div class="form-actions">
-                    <button id="saveSettings" class="btn btn-primary">Start Tracking</button>
+                    <button id="saveSettings" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Start Tracking</button>
                 </div>
             </div>
         </div>
@@ -97,11 +126,17 @@
                 <h2 id="createTodayTitle"></h2>
             </div>
             <div class="modal-body" style="text-align:center;">
-                <p>Log entries as soon as you crave or smoke.<br>CigLog transforms these entries into analytics.</p>
+                <p>CigLog is a cigarettes craved and smoked logger that helps you log your daily smoking habits.</p>
+                <ul style="text-align:left;margin:12px auto;max-width:280px;color:var(--text-secondary);font-size:0.9rem;list-style:none;padding:0;">
+                    <li style="margin-bottom:6px;"><i class="fa-solid fa-file" style="width:20px;"></i> Start Fresh and a new zero-day entry will be created today</li>
+                    <li><i class="fa-solid fa-file-arrow-down" style="width:20px;"></i> Load from a previous file</li>
+                </ul>
                 <p class="help-text">All data is stored locally.</p>
-                <div class="form-actions">
-                    <button id="createTodayYes" class="btn btn-primary">Continue</button>
+                <div class="form-actions create-today-btn-row">
+                    <button id="createTodayYes" class="btn btn-primary"><i class="fa-solid fa-file"></i> Start Fresh Log</button>
+                    <button id="createTodayLoad" class="btn btn-secondary"><i class="fa-solid fa-file-arrow-down"></i> Load from File</button>
                 </div>
+                <input type="file" id="csvFileFirstRun" accept=".csv" style="display:none;">
             </div>
         </div>
     </div>
@@ -254,14 +289,6 @@
                 <span class="menu-icon"><i class="fa-solid fa-chart-line"></i></span>
                 <span>Show Chart</span>
             </button>
-            <button id="exportBtn" class="menu-item">
-                <span class="menu-icon"><i class="fa-solid fa-upload"></i></span>
-                <span>Export CSV</span>
-            </button>
-            <button id="importBtn" class="menu-item">
-                <span class="menu-icon"><i class="fa-solid fa-download"></i></span>
-                <span>Import CSV</span>
-            </button>
             <button id="settingsMenuBtn" class="menu-item">
                 <span class="menu-icon"><i class="fa-solid fa-sliders"></i></span>
                 <span>Settings</span>
@@ -358,7 +385,7 @@
                     <li>Use the side menu for charts, export/import, and settings</li>
                 </ul>
                 <p class="motivation">"Log smokes and cravings - CigLog shows the toll."</p>
-                <div class="version">Version 1.2.0 | 11-05-2026</div>
+                <div class="version">Version 1.2.1 | 12-05-2026</div>
             </div>
         </div>
     </div>

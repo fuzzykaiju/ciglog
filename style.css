@@ -1368,6 +1368,67 @@ input[type="number"] {
     font-size: 1rem;
 }
 
+/* Settings custom trigger inputs */
+.custom-trigger-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    width: 100%;
+    max-width: 300px;
+}
+
+.custom-trigger-input-row i {
+    color: var(--trigger-color);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.custom-trigger-input-row input {
+    flex: 1;
+    padding: 8px 10px;
+    background-color: var(--bg-secondary);
+    border: 1px solid rgba(217, 217, 217, 0.25);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    width: auto;
+    max-width: none;
+}
+
+.custom-trigger-input-row input:focus {
+    outline: none;
+    border-color: var(--trigger-color);
+}
+
+/* Settings export/import row */
+.settings-export-import-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.settings-export-import-row .btn {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 8px 10px;
+}
+
+/* Create today two-button row */
+.create-today-btn-row {
+    flex-direction: row !important;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.create-today-btn-row .btn {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 10px 8px;
+}
+
 /* Chart tabs */
 .chart-tabs {
     display: flex;
