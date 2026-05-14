@@ -948,7 +948,7 @@ input[type="number"] {
     text-align: center;
 }
 
-/* Trigger toggle button */
+/* Trigger toggle button — monochrome in modals */
 .trigger-toggle-btn {
     display: flex;
     align-items: center;
@@ -958,9 +958,9 @@ input[type="number"] {
     max-width: 300px;
     padding: 8px 12px;
     background-color: transparent;
-    border: 1px dashed rgba(180, 198, 231, 0.4);
+    border: 1px dashed rgba(217, 217, 217, 0.25);
     border-radius: 8px;
-    color: var(--trigger-color);
+    color: var(--text-secondary);
     font-family: inherit;
     font-size: 0.85rem;
     cursor: pointer;
@@ -969,6 +969,27 @@ input[type="number"] {
 }
 
 .trigger-toggle-btn:hover { filter: brightness(1.15); }
+
+/* Edit row bolt icon button */
+.edit-trigger-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: color 0.2s;
+    flex-shrink: 0;
+}
+
+.edit-trigger-btn.has-triggers {
+    color: var(--trigger-color);
+}
+
+.edit-trigger-btn:hover {
+    filter: brightness(1.15);
+}
 
 /* Trigger chip section */
 .trigger-section {
