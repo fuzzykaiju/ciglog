@@ -2,6 +2,45 @@
 //  CigLog  —  Cigarette Logger
 // ─────────────────────────────────────────────────────────────────────────────
 
+const TRIGGERS = [
+    // Physiological
+    { id: 'morning',   label: 'Morning',    icon: 'fa-solid fa-toilet-paper',      group: 'physiological' },
+    { id: 'aftermeal', label: 'After Meal', icon: 'fa-solid fa-utensils',          group: 'physiological' },
+    { id: 'coffee',    label: 'Coffee/Tea', icon: 'fa-solid fa-mug-hot',           group: 'physiological' },
+    { id: 'alcohol',   label: 'Alcohol',    icon: 'fa-solid fa-wine-glass',        group: 'physiological' },
+    { id: 'tired',     label: 'Tired',      icon: 'fa-solid fa-bed',               group: 'physiological' },
+    { id: 'hunger',    label: 'Hunger',     icon: 'fa-solid fa-burger',            group: 'physiological' },
+    // Psychological
+    { id: 'stress',    label: 'Stress',     icon: 'fa-solid fa-brain',             group: 'psychological' },
+    { id: 'anxiety',   label: 'Anxiety',    icon: 'fa-solid fa-heart-pulse',       group: 'psychological' },
+    { id: 'boredom',   label: 'Boredom',    icon: 'fa-regular fa-face-meh',        group: 'psychological' },
+    { id: 'lonely',    label: 'Lonely',     icon: 'fa-solid fa-person',            group: 'psychological' },
+    { id: 'angry',     label: 'Angry',      icon: 'fa-regular fa-face-angry',      group: 'psychological' },
+    { id: 'sad',       label: 'Sad',        icon: 'fa-regular fa-face-sad-tear',   group: 'psychological' },
+    { id: 'restless',  label: 'Restless',   icon: 'fa-solid fa-person-walking',    group: 'psychological' },
+    // Social
+    { id: 'withsmokers', label: 'Smokers',  icon: 'fa-solid fa-people-group',     group: 'social' },
+    { id: 'gathering',   label: 'Gathering',icon: 'fa-solid fa-champagne-glasses', group: 'social' },
+    { id: 'pressure',    label: 'Pressure', icon: 'fa-solid fa-hand-point-right',  group: 'social' },
+    // Situational
+    { id: 'workbreak', label: 'Work Break', icon: 'fa-solid fa-briefcase',         group: 'situational' },
+    { id: 'driving',   label: 'Driving',    icon: 'fa-solid fa-car',               group: 'situational' },
+    { id: 'commuting', label: 'Commuting',  icon: 'fa-solid fa-bus',               group: 'situational' },
+    { id: 'waiting',   label: 'Waiting',    icon: 'fa-regular fa-clock',           group: 'situational' },
+    { id: 'exercise',  label: 'Exercise',   icon: 'fa-solid fa-dumbbell',          group: 'situational' },
+    { id: 'watching',  label: 'Watching TV',icon: 'fa-solid fa-tv',                group: 'situational' },
+    { id: 'phonecall', label: 'Phone Call', icon: 'fa-solid fa-phone',             group: 'situational' },
+    { id: 'afterwork', label: 'After Work', icon: 'fa-solid fa-house',             group: 'situational' },
+    { id: 'outdoor',   label: 'Outdoors',   icon: 'fa-solid fa-tree',              group: 'situational' },
+];
+
+const TRIGGER_GROUPS = [
+    { key: 'physiological', label: 'Physiological' },
+    { key: 'psychological', label: 'Psychological' },
+    { key: 'social',        label: 'Social'        },
+    { key: 'situational',   label: 'Situational'   },
+];
+
 class CigLogTracker {
 
     // ── Initialisation ────────────────────────────────────────────────────────
@@ -94,6 +133,13 @@ class CigLogTracker {
         this.charts       = { smoked: null, cravings: null, intensity: null, lifelost: null };
         this.activeTab    = 'smoked';
 
+        // Trigger sections
+        this.cravingTriggerToggle  = $('cravingTriggerToggle');
+        this.cravingTriggerSection = $('cravingTriggerSection');
+        this.smokeTriggerToggle    = $('smokeTriggerToggle');
+        this.smokeTriggerSection   = $('smokeTriggerSection');
+        this._activeTriggerPopover = null;
+
         // Import
         this.csvFile = $('csvFile');
 
@@ -164,6 +210,14 @@ class CigLogTracker {
         });
         document.getElementById('skippedDismiss').addEventListener('click', () => {
             this._closeModal('skippedDay');
+        });
+
+        // Trigger toggles
+        document.getElementById('cravingTriggerToggle').addEventListener('click', () => {
+            this.cravingTriggerSection.classList.toggle('open');
+        });
+        document.getElementById('smokeTriggerToggle').addEventListener('click', () => {
+            this.smokeTriggerSection.classList.toggle('open');
         });
 
         // Add-craving modal
@@ -474,6 +528,90 @@ class CigLogTracker {
         this._renderTable();
     }
 
+    // ── Trigger helpers ───────────────────────────────────────────────────────
+
+    _computeFrequentTriggers() {
+        const counts = {};
+        this.entries.forEach(entry => {
+            [...entry.cravings, ...entry.smoked].forEach(ev => {
+                (ev.triggers || []).forEach(id => {
+                    counts[id] = (counts[id] || 0) + 1;
+                });
+            });
+        });
+        return Object.entries(counts)
+            .filter(([, c]) => c >= 3)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 6)
+            .map(([id]) => id);
+    }
+
+    _buildTriggerChips(container, selectedIds = []) {
+        container.innerHTML = '';
+        const frequent = this._computeFrequentTriggers();
+        const custom   = (this.settings.customTriggers || []).filter(t => t && t.trim());
+
+        // Frequent section
+        if (frequent.length) {
+            const freqLabel = document.createElement('div');
+            freqLabel.className = 'trigger-group-label';
+            freqLabel.textContent = 'Frequent';
+            const freqGrid = document.createElement('div');
+            freqGrid.className = 'trigger-chip-grid';
+            frequent.forEach(id => {
+                const t = TRIGGERS.find(t => t.id === id)
+                    || (custom.findIndex(c => c === id) !== -1 ? { id, label: id, icon: 'fa-solid fa-tag' } : null);
+                if (t) freqGrid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
+            });
+            container.appendChild(freqLabel);
+            container.appendChild(freqGrid);
+        }
+
+        // Custom section
+        if (custom.length) {
+            const custLabel = document.createElement('div');
+            custLabel.className = 'trigger-group-label';
+            custLabel.textContent = 'Custom';
+            const custGrid = document.createElement('div');
+            custGrid.className = 'trigger-chip-grid';
+            custom.forEach((label, i) => {
+                const t = { id: `custom_${i}`, label, icon: 'fa-solid fa-tag' };
+                custGrid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
+            });
+            container.appendChild(custLabel);
+            container.appendChild(custGrid);
+        }
+
+        // Preset groups
+        TRIGGER_GROUPS.forEach(group => {
+            const triggers = TRIGGERS.filter(t => t.group === group.key);
+            const label = document.createElement('div');
+            label.className = 'trigger-group-label';
+            label.textContent = group.label;
+            const grid = document.createElement('div');
+            grid.className = 'trigger-chip-grid';
+            triggers.forEach(t => {
+                grid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
+            });
+            container.appendChild(label);
+            container.appendChild(grid);
+        });
+    }
+
+    _makeChip(trigger, selected = false) {
+        const chip = document.createElement('button');
+        chip.className = `trigger-chip${selected ? ' selected' : ''}`;
+        chip.dataset.triggerId = trigger.id;
+        chip.innerHTML = `<i class="${trigger.icon}"></i><span>${trigger.label}</span>`;
+        chip.addEventListener('click', () => chip.classList.toggle('selected'));
+        return chip;
+    }
+
+    _getSelectedTriggers(container) {
+        return [...container.querySelectorAll('.trigger-chip.selected')]
+            .map(c => c.dataset.triggerId);
+    }
+
     // ── Table rendering ───────────────────────────────────────────────────────
 
     // ── MLL formatters ────────────────────────────────────────────────────────
@@ -598,6 +736,9 @@ class CigLogTracker {
         this.cravingHH.value = '';
         this.cravingMM.value = '';
         this.saveCravingBtn.disabled = true;
+        // Reset trigger section
+        this.cravingTriggerSection.classList.remove('open');
+        this._buildTriggerChips(this.cravingTriggerSection, []);
         if (date === this._today()) {
             this._buildTimePresets(this.smartTimeDefaults, this.cravingHH, this.cravingMM,
                 () => this._updateSaveBtn('craving'));
@@ -617,9 +758,9 @@ class CigLogTracker {
         }
         const idx = this._getEntryIdx(this.activeDate);
         if (idx === -1) { this._toast('Error: entry not found'); return; }
-        this.entries[idx].cravings.push({ time: `${hh}:${mm}`, intensity: sel.dataset.intensity });
+        const triggers = this._getSelectedTriggers(this.cravingTriggerSection);
+        this.entries[idx].cravings.push({ time: `${hh}:${mm}`, intensity: sel.dataset.intensity, triggers });
         this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
-        // If this was a skipped day, it now has data — clear the flag
         if (this.entries[idx].skipped) this.entries[idx].skipped = false;
         this._persist('entries');
         this._closeModal('addCraving');
@@ -636,6 +777,9 @@ class CigLogTracker {
         this.smokeMM.value = '';
         this.cigaretteCount.value = '1';
         this.saveSmokeBtn.disabled = true;
+        // Reset trigger section
+        this.smokeTriggerSection.classList.remove('open');
+        this._buildTriggerChips(this.smokeTriggerSection, []);
         if (date === this._today()) {
             this._buildTimePresets(this.smokeTimeDefaults, this.smokeHH, this.smokeMM,
                 () => this._updateSaveBtn('smoke'));
@@ -655,9 +799,11 @@ class CigLogTracker {
         }
         const idx = this._getEntryIdx(this.activeDate);
         if (idx === -1) { this._toast('Error: entry not found'); return; }
+        const triggers = this._getSelectedTriggers(this.smokeTriggerSection);
         this.entries[idx].smoked.push({
             time: `${hh}:${mm}`, count,
-            pricePerCigarette: this.settings.cigarettePrice
+            pricePerCigarette: this.settings.cigarettePrice,
+            triggers,
         });
         this.entries[idx].smoked.sort((a, b) => this._byTimeAsc(a, b));
         if (this.entries[idx].skipped) this.entries[idx].skipped = false;
@@ -778,7 +924,7 @@ class CigLogTracker {
                 const totalMin = hh * 60 + mm;
                 const interval = lastCravingMin === null ? '—' : fmtInterval(totalMin - lastCravingMin);
                 lastCravingMin = totalMin;
-                return { time: c.time, type: 'craving', intensity: c.intensity, interval };
+                return { time: c.time, type: 'craving', intensity: c.intensity, interval, triggers: c.triggers || [] };
             });
 
         // Build smoke events with intra-day intervals
@@ -790,7 +936,7 @@ class CigLogTracker {
                 const totalMin = hh * 60 + mm;
                 const interval = lastSmokeMin === null ? '—' : fmtInterval(totalMin - lastSmokeMin);
                 lastSmokeMin = totalMin;
-                return { time: s.time, type: 'smoke', interval };
+                return { time: s.time, type: 'smoke', interval, triggers: s.triggers || [] };
             });
 
         const events = [...cravingEvents, ...smokeEvents]
@@ -806,12 +952,51 @@ class CigLogTracker {
                 const indicator = ev.type === 'craving'
                     ? `<span class="timeline-intensity" style="background-color:${intensityColor[ev.intensity]}"></span>`
                     : `<span class="timeline-skull"><i class="fa-solid fa-skull"></i></span>`;
+                const hasTriggers = ev.triggers && ev.triggers.length > 0;
+                const boltClass   = hasTriggers ? 'timeline-bolt has-triggers' : 'timeline-bolt';
+                const triggerNames = hasTriggers
+                    ? ev.triggers.map(id => {
+                        const preset = TRIGGERS.find(t => t.id === id);
+                        if (preset) return preset.label;
+                        const custom = (this.settings.customTriggers || []);
+                        const ci = parseInt(id.replace('custom_', ''));
+                        return custom[ci] || id;
+                    }).join(', ')
+                    : '';
                 el.innerHTML = `
                     <span class="timeline-time">${ev.time}</span>
                     <span class="timeline-emoji">${ev.type === 'craving' ? '<i class="fa-solid fa-face-tired fa-fw"></i>' : '<i class="fa-solid fa-smoking fa-fw"></i>'}</span>
                     <span class="timeline-interval">${ev.interval}</span>
+                    <span class="${boltClass}" data-triggers="${triggerNames}"><i class="fa-solid fa-bolt"></i></span>
                     ${indicator}`;
                 this.timelineContent.appendChild(el);
+            });
+
+            // Bind trigger popover on bolt icons
+            this._activeTriggerPopover = null;
+            this.timelineContent.querySelectorAll('.timeline-bolt.has-triggers').forEach(bolt => {
+                bolt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Remove existing popover
+                    if (this._activeTriggerPopover) {
+                        this._activeTriggerPopover.remove();
+                        const prev = this._activeTriggerPopover._anchor;
+                        this._activeTriggerPopover = null;
+                        if (prev === bolt) return; // toggle off
+                    }
+                    const pop = document.createElement('div');
+                    pop.className = 'trigger-popover';
+                    pop.textContent = bolt.dataset.triggers;
+                    pop._anchor = bolt;
+                    bolt.appendChild(pop);
+                    this._activeTriggerPopover = pop;
+                });
+            });
+            document.addEventListener('click', () => {
+                if (this._activeTriggerPopover) {
+                    this._activeTriggerPopover.remove();
+                    this._activeTriggerPopover = null;
+                }
             });
         }
         this.dayNotes.value = entry.notes || '';
@@ -866,6 +1051,22 @@ class CigLogTracker {
                 <button class="edit-intensity-btn medium ${craving.intensity === 'medium' ? 'selected' : ''}" data-intensity="medium">M</button>
                 <button class="edit-intensity-btn high   ${craving.intensity === 'high'   ? 'selected' : ''}" data-intensity="high">H</button>
             </div>`;
+        // Trigger section for edit row
+        const triggerWrap = document.createElement('div');
+        triggerWrap.className = 'edit-trigger-wrap';
+        const triggerToggle = document.createElement('button');
+        triggerToggle.className = 'trigger-toggle-btn';
+        triggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> + Add Trigger';
+        triggerToggle.type = 'button';
+        const triggerSection = document.createElement('div');
+        triggerSection.className = 'trigger-section edit-trigger-section';
+        const savedTriggers = craving.triggers || [];
+        if (savedTriggers.length) triggerSection.classList.add('open');
+        this._buildTriggerChips(triggerSection, savedTriggers);
+        triggerToggle.addEventListener('click', () => triggerSection.classList.toggle('open'));
+        triggerWrap.appendChild(triggerToggle);
+        triggerWrap.appendChild(triggerSection);
+        el.appendChild(triggerWrap);
         const hhInput = el.querySelector('.edit-hh');
         const mmInput = el.querySelector('.edit-mm');
         this._bindTimeInputs(hhInput, mmInput, () => {});
@@ -895,6 +1096,22 @@ class CigLogTracker {
                 <span class="count-separator">×</span>
                 <input type="number" class="edit-count" value="${smoke.count || 1}" min="1">
             </div>`;
+        // Trigger section for edit row
+        const triggerWrap = document.createElement('div');
+        triggerWrap.className = 'edit-trigger-wrap';
+        const triggerToggle = document.createElement('button');
+        triggerToggle.className = 'trigger-toggle-btn';
+        triggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> + Add Trigger';
+        triggerToggle.type = 'button';
+        const triggerSection = document.createElement('div');
+        triggerSection.className = 'trigger-section edit-trigger-section';
+        const savedTriggers = smoke.triggers || [];
+        if (savedTriggers.length) triggerSection.classList.add('open');
+        this._buildTriggerChips(triggerSection, savedTriggers);
+        triggerToggle.addEventListener('click', () => triggerSection.classList.toggle('open'));
+        triggerWrap.appendChild(triggerToggle);
+        triggerWrap.appendChild(triggerSection);
+        el.appendChild(triggerWrap);
         const hhInput = el.querySelector('.edit-hh');
         const mmInput = el.querySelector('.edit-mm');
         this._bindTimeInputs(hhInput, mmInput, () => {});
@@ -1001,7 +1218,9 @@ class CigLogTracker {
             const mm  = item.querySelector('.edit-mm').value.padStart(2, '0');
             const sel = item.querySelector('.edit-intensity-btn.selected');
             const time = `${hh}:${mm}`;
-            if (TIME_RE.test(time) && sel) cravings.push({ time, intensity: sel.dataset.intensity });
+            const triggerSection = item.querySelector('.edit-trigger-section');
+            const triggers = triggerSection ? this._getSelectedTriggers(triggerSection) : [];
+            if (TIME_RE.test(time) && sel) cravings.push({ time, intensity: sel.dataset.intensity, triggers });
         });
 
         const smoked = [];
@@ -1015,7 +1234,9 @@ class CigLogTracker {
                 ? (origSmoked[origIdx].pricePerCigarette ?? this.settings.cigarettePrice)
                 : this.settings.cigarettePrice;
             const time = `${hh}:${mm}`;
-            if (TIME_RE.test(time) && count > 0) smoked.push({ time, count, pricePerCigarette: price });
+            const triggerSection = item.querySelector('.edit-trigger-section');
+            const triggers = triggerSection ? this._getSelectedTriggers(triggerSection) : [];
+            if (TIME_RE.test(time) && count > 0) smoked.push({ time, count, pricePerCigarette: price, triggers });
         });
 
         cravings.sort((a, b) => this._byTimeAsc(a, b));
@@ -1591,6 +1812,12 @@ class CigLogTracker {
                 <h4>Version 1.1.3 | 09-05-2026</h4>
                 <ul>
                     <li>Added Google Font - Roboto Mono.</li>                    
+                </ul>
+                <h4>Version 1.2.0 | 11-05-2026</h4>
+                <ul>
+                    <li>New feature added - Triggers.</li>
+                    <li>Each craving or smoked entry can now have multiple triggers selected from a predefined list.</li>
+                    <li>Info & Notes modal now displays Trigger information.</li>
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
