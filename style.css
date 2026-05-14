@@ -983,10 +983,10 @@ input[type="number"] {
 .trigger-group-label {
     color: var(--text-secondary);
     font-size: 0.75rem;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 8px 0 4px;
     grid-column: 1 / -1;
+    text-align: center;
 }
 
 .trigger-chip-grid {
@@ -1379,7 +1379,7 @@ input[type="number"] {
 }
 
 .custom-trigger-input-row i {
-    color: var(--trigger-color);
+    color: var(--text-secondary);
     font-size: 0.9rem;
     flex-shrink: 0;
 }
@@ -1399,7 +1399,7 @@ input[type="number"] {
 
 .custom-trigger-input-row input:focus {
     outline: none;
-    border-color: var(--trigger-color);
+    border-color: var(--text-primary);
 }
 
 /* Settings export/import row */
@@ -1415,6 +1415,13 @@ input[type="number"] {
     font-size: 0.85rem;
     padding: 8px 10px;
 }
+
+/* Custom trigger toggle in settings — monochrome, not trigger-colour */
+#customTriggerToggle {
+    border-color: rgba(217, 217, 217, 0.25);
+    color: var(--text-secondary);
+}
+#customTriggerToggle:hover { filter: brightness(1.15); }
 
 /* Create today two-button row */
 .create-today-btn-row {

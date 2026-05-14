@@ -4,34 +4,35 @@
 
 const TRIGGERS = [
     // Physiological
-    { id: 'morning',   label: 'Morning',    icon: 'fa-solid fa-toilet-paper',      group: 'physiological' },
-    { id: 'aftermeal', label: 'After Meal', icon: 'fa-solid fa-utensils',          group: 'physiological' },
-    { id: 'coffee',    label: 'Coffee/Tea', icon: 'fa-solid fa-mug-hot',           group: 'physiological' },
-    { id: 'alcohol',   label: 'Alcohol',    icon: 'fa-solid fa-wine-glass',        group: 'physiological' },
-    { id: 'tired',     label: 'Tired',      icon: 'fa-solid fa-bed',               group: 'physiological' },
-    { id: 'hunger',    label: 'Hunger',     icon: 'fa-solid fa-burger',            group: 'physiological' },
+    { id: 'morning',   label: 'Morning',    icon: 'fa-solid fa-toilet-paper',             group: 'physiological' },
+    { id: 'aftermeal', label: 'After Meal', icon: 'fa-solid fa-utensils',                 group: 'physiological' },
+    { id: 'coffee',    label: 'Coffee/Tea', icon: 'fa-solid fa-mug-hot',                  group: 'physiological' },
+    { id: 'alcohol',   label: 'Alcohol',    icon: 'fa-solid fa-wine-glass',               group: 'physiological' },
+    { id: 'tired',     label: 'Tired',      icon: 'fa-solid fa-bed',                      group: 'physiological' },
+    { id: 'hunger',    label: 'Hunger',     icon: 'fa-solid fa-burger',                   group: 'physiological' },
     // Psychological
-    { id: 'stress',    label: 'Stress',     icon: 'fa-solid fa-brain',             group: 'psychological' },
-    { id: 'anxiety',   label: 'Anxiety',    icon: 'fa-solid fa-heart-pulse',       group: 'psychological' },
-    { id: 'boredom',   label: 'Boredom',    icon: 'fa-regular fa-face-meh',        group: 'psychological' },
-    { id: 'lonely',    label: 'Lonely',     icon: 'fa-solid fa-person',            group: 'psychological' },
-    { id: 'angry',     label: 'Angry',      icon: 'fa-regular fa-face-angry',      group: 'psychological' },
-    { id: 'sad',       label: 'Sad',        icon: 'fa-regular fa-face-sad-tear',   group: 'psychological' },
-    { id: 'restless',  label: 'Restless',   icon: 'fa-solid fa-person-walking',    group: 'psychological' },
+    { id: 'stress',    label: 'Stress',     icon: 'fa-solid fa-brain',                    group: 'psychological' },
+    { id: 'anxiety',   label: 'Anxiety',    icon: 'fa-solid fa-heart-pulse',              group: 'psychological' },
+    { id: 'boredom',   label: 'Boredom',    icon: 'fa-regular fa-face-meh',               group: 'psychological' },
+    { id: 'lonely',    label: 'Lonely',     icon: 'fa-solid fa-person',                   group: 'psychological' },
+    { id: 'angry',     label: 'Angry',      icon: 'fa-regular fa-face-angry',             group: 'psychological' },
+    { id: 'sad',       label: 'Sad',        icon: 'fa-regular fa-face-sad-tear',          group: 'psychological' },
+    { id: 'restless',  label: 'Restless',   icon: 'fa-solid fa-person-running',           group: 'psychological' },
     // Social
-    { id: 'withsmokers', label: 'Smokers',  icon: 'fa-solid fa-people-group',     group: 'social' },
-    { id: 'gathering',   label: 'Gathering',icon: 'fa-solid fa-champagne-glasses', group: 'social' },
-    { id: 'pressure',    label: 'Pressure', icon: 'fa-solid fa-hand-point-right',  group: 'social' },
+    { id: 'withsmokers', label: 'Smokers',  icon: 'fa-solid fa-people-group',            group: 'social' },
+    { id: 'gathering',   label: 'Gathering',icon: 'fa-solid fa-champagne-glasses',        group: 'social' },
+    { id: 'pressure',    label: 'Pressure', icon: 'fa-solid fa-hand-point-right',         group: 'social' },
     // Situational
-    { id: 'workbreak', label: 'Work Break', icon: 'fa-solid fa-briefcase',         group: 'situational' },
-    { id: 'driving',   label: 'Driving',    icon: 'fa-solid fa-car',               group: 'situational' },
-    { id: 'commuting', label: 'Commuting',  icon: 'fa-solid fa-bus',               group: 'situational' },
-    { id: 'waiting',   label: 'Waiting',    icon: 'fa-regular fa-clock',           group: 'situational' },
-    { id: 'exercise',  label: 'Exercise',   icon: 'fa-solid fa-dumbbell',          group: 'situational' },
-    { id: 'watching',  label: 'Watching TV',icon: 'fa-solid fa-tv',                group: 'situational' },
-    { id: 'phonecall', label: 'Phone Call', icon: 'fa-solid fa-phone',             group: 'situational' },
-    { id: 'afterwork', label: 'After Work', icon: 'fa-solid fa-house',             group: 'situational' },
-    { id: 'outdoor',   label: 'Outdoors',   icon: 'fa-solid fa-tree',              group: 'situational' },
+    { id: 'work',      label: 'Work',       icon: 'fa-solid fa-briefcase',               group: 'situational' },
+    { id: 'workbreak', label: 'Work Break', icon: 'fa-solid fa-business-time',           group: 'situational' },
+    { id: 'driving',   label: 'Driving',    icon: 'fa-solid fa-car',                     group: 'situational' },
+    { id: 'commuting', label: 'Commuting',  icon: 'fa-solid fa-bus',                     group: 'situational' },
+    { id: 'waiting',   label: 'Waiting',    icon: 'fa-regular fa-clock',                 group: 'situational' },
+    { id: 'exercise',  label: 'Exercise',   icon: 'fa-solid fa-dumbbell',                group: 'situational' },
+    { id: 'relaxing',  label: 'Relaxing',   icon: 'fa-solid fa-couch',                   group: 'situational' },
+    { id: 'phonecall', label: 'Phone Call', icon: 'fa-solid fa-phone',                   group: 'situational' },
+    { id: 'afterwork', label: 'After Work', icon: 'fa-solid fa-building-circle-arrow-right', group: 'situational' },
+    { id: 'outdoor',   label: 'Outdoors',   icon: 'fa-solid fa-tree',                    group: 'situational' },
 ];
 
 const TRIGGER_GROUPS = [
@@ -397,9 +398,9 @@ class CigLogTracker {
             // Update price + custom triggers
             this.settings.cigarettePrice = price;
             const custom = [
-                ($('customTrigger0')?.value || '').trim(),
-                ($('customTrigger1')?.value || '').trim(),
-                ($('customTrigger2')?.value || '').trim(),
+                (document.getElementById('customTrigger0')?.value || '').trim(),
+                (document.getElementById('customTrigger1')?.value || '').trim(),
+                (document.getElementById('customTrigger2')?.value || '').trim(),
             ].filter(t => t.length > 0);
             this.settings.customTriggers = custom;
             this._persist('settings');
@@ -435,7 +436,7 @@ class CigLogTracker {
             // First run — hide custom/export sections
             this.customTriggerGroup.style.display = 'none';
             this.exportImportGroup.style.display  = 'none';
-            document.getElementById('saveSettings').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Start Tracking';
+            document.getElementById('saveSettings').innerHTML = '<i class="fa-solid fa-play"></i> Start Tracking';
             this.closeSettingsBtn.style.display = 'none';
         }
         this._openModal('settings');
@@ -1933,6 +1934,14 @@ class CigLogTracker {
                     <li>Import now validates data before replacing existing entries.</li>
                     <li>Import safety flow - option to export a backup before overwriting data.</li>
                     <li>Menu simplified - Chart, Settings, About, Read Me, Reset only.</li>
+                </ul>
+                <h4>Version 1.2.2 | 13-05-2026</h4>
+                <ul>
+                    <li>First-run Start Tracking button icon changed to play icon.</li>
+                    <li>Settings modal Custom Triggers section styled to match monochrome theme.</li>
+                    <li>Settings modal Save button bug fixed.</li>
+                    <li>Trigger category labels now centre aligned and no longer uppercase.</li>
+                    <li>Triggers reworked: Restless, Work Break, After Work icons updated; Watching TV replaced with Relaxing; Work trigger added.</li>
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
