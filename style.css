@@ -972,12 +972,13 @@ input[type="number"] {
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: 0.9rem;
     cursor: pointer;
-    padding: 4px 6px;
+    padding: 2px 4px;
     border-radius: 4px;
     transition: color 0.2s;
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 .edit-trigger-btn.has-triggers {
@@ -1106,12 +1107,13 @@ input[type="number"] {
 .edit-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     padding: 10px;
     border-bottom: 1px solid rgba(217, 217, 217, 0.1);
     background-color: var(--bg-primary);
     border-radius: 4px;
     margin-bottom: 5px;
+    overflow: hidden;
 }
 
 .edit-item:last-child {

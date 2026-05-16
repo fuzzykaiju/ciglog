@@ -791,7 +791,7 @@ class CigLogTracker {
         this.saveCravingBtn.disabled = true;
         // Reset pending triggers
         this._pendingCravingTriggers = [];
-        this.cravingTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> + Add Trigger';
+        this.cravingTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smartTimeDefaults, this.cravingHH, this.cravingMM,
                 () => this._updateSaveBtn('craving'));
@@ -832,7 +832,7 @@ class CigLogTracker {
         this.saveSmokeBtn.disabled = true;
         // Reset pending triggers
         this._pendingSmokeTriggers = [];
-        this.smokeTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> + Add Trigger';
+        this.smokeTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smokeTimeDefaults, this.smokeHH, this.smokeMM,
                 () => this._updateSaveBtn('smoke'));
@@ -871,12 +871,12 @@ class CigLogTracker {
     _buildTimePresets(container, hhInput, mmInput, onChange) {
         const now     = new Date();
         const presets = [
-            { label: 'Just now',   min: 0   },
-            { label: '5 min ago',  min: 5   },
-            { label: '15 min ago', min: 15  },
-            { label: '30 min ago', min: 30  },
-            { label: '1 hr ago',   min: 60  },
-            { label: '2 hr ago',   min: 120 },
+            { label: 'Just now',  min: 0   },
+            { label: '5m ago',    min: 5   },
+            { label: '15m ago',   min: 15  },
+            { label: '30m ago',   min: 30  },
+            { label: '1hr ago',   min: 60  },
+            { label: '2hr ago',   min: 120 },
         ];
         container.innerHTML = '';
         presets.forEach(({ label, min }) => {
@@ -1004,7 +1004,7 @@ class CigLogTracker {
                 el.className = 'timeline-entry';
                 const indicator = ev.type === 'craving'
                     ? `<span class="timeline-intensity" style="background-color:${intensityColor[ev.intensity]}"></span>`
-                    : `<span class="timeline-skull"><i class="fa-solid fa-skull"></i></span>`;
+                    : `<span class="timeline-skull"><i class="fa-solid fa-square" style="color:var(--yellow);font-size:0.7rem;"></i></span>`;
                 const hasTriggers = ev.triggers && ev.triggers.length > 0;
                 const boltClass   = hasTriggers ? 'timeline-bolt has-triggers' : 'timeline-bolt';
                 const triggerNames = hasTriggers
@@ -1108,7 +1108,6 @@ class CigLogTracker {
         el.dataset.triggers = JSON.stringify(savedTriggers);
         el.innerHTML = `
             <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="${index}">
-            <span>${index + 1}.</span>
             <div class="edit-time-input">
                 <input type="text" inputmode="numeric" class="edit-hh" value="${hh}" maxlength="2" placeholder="HH">
                 <span>:</span>
@@ -1144,7 +1143,6 @@ class CigLogTracker {
         el.dataset.triggers = JSON.stringify(savedTriggers);
         el.innerHTML = `
             <input type="checkbox" class="edit-checkbox smoke-checkbox" data-index="${index}">
-            <span>${index + 1}.</span>
             <div class="edit-time-input">
                 <input type="text" inputmode="numeric" class="edit-hh" value="${hh}" maxlength="2" placeholder="HH">
                 <span>:</span>
@@ -1183,11 +1181,11 @@ class CigLogTracker {
 
         if (source === 'craving') {
             this._pendingCravingTriggers = selected;
-            const label = selected.length ? `⚡ ${selected.length} trigger${selected.length > 1 ? 's' : ''}` : '+ Add Trigger';
+            const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
             this.cravingTriggerToggle.innerHTML = `<i class="fa-solid fa-bolt"></i> ${label}`;
         } else if (source === 'smoke') {
             this._pendingSmokeTriggers = selected;
-            const label = selected.length ? `⚡ ${selected.length} trigger${selected.length > 1 ? 's' : ''}` : '+ Add Trigger';
+            const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
             this.smokeTriggerToggle.innerHTML = `<i class="fa-solid fa-bolt"></i> ${label}`;
         } else if (source && typeof source === 'object') {
             // Edit modal row element
@@ -2004,6 +2002,15 @@ class CigLogTracker {
                     <li>Trigger popover in Timeline now viewport-aware and no longer clips at modal edges.</li>
                     <li>Get started modal buttons now stack vertically.</li>
                     <li>Time preset buttons now display in 3-column grid on mobile.</li>                    
+                </ul>
+                <h4>Version 1.2.5 | 16-05-2026</h4>
+                <ul>
+                    <li>Time preset button labels shortened for mobile display.</li>
+                    <li>Add Trigger button text cleaned up - no plus symbol, no redundant emoji.</li>
+                    <li>Edit modal serial numbers removed for cleaner layout.</li>
+                    <li>Edit modal bolt icon overflow fixed.</li>
+                    <li>MLL column header changed to clock icon.</li>
+                    <li>Skull icon replaced with amber square in timeline.</li>                    
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
