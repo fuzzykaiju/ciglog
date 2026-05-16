@@ -4,36 +4,41 @@
 
 const TRIGGERS = [
     // Physiological
-    { id: 'aftermeal', label: 'After Meal', icon: 'fa-solid fa-utensils',                 group: 'physiological' },
-    { id: 'alcohol',   label: 'Alcohol',    icon: 'fa-solid fa-wine-glass',               group: 'physiological' },
-    { id: 'coffee',    label: 'Coffee/Tea', icon: 'fa-solid fa-mug-hot',                  group: 'physiological' },
-    { id: 'hunger',    label: 'Hunger',     icon: 'fa-solid fa-burger',                   group: 'physiological' },
-    { id: 'morning',   label: 'Morning',    icon: 'fa-solid fa-toilet-paper',             group: 'physiological' },
-    { id: 'tired',     label: 'Tired',      icon: 'fa-solid fa-bed',                      group: 'physiological' },
+    { id: 'aftermeal',   label: 'After Meal',  icon: 'fa-solid fa-utensils',                  group: 'physiological' },
+    { id: 'alcohol',     label: 'Alcohol',      icon: 'fa-solid fa-wine-glass',                group: 'physiological' },
+    { id: 'coffee',      label: 'Coffee/Tea',   icon: 'fa-solid fa-mug-hot',                   group: 'physiological' },
+    { id: 'habit',       label: 'Habit',        icon: 'fa-solid fa-rotate',                    group: 'physiological' },
+    { id: 'hunger',      label: 'Hunger',       icon: 'fa-solid fa-burger',                    group: 'physiological' },
+    { id: 'morning',     label: 'Morning',      icon: 'fa-solid fa-toilet-paper',              group: 'physiological' },
+    { id: 'pain',        label: 'Pain',         icon: 'fa-solid fa-hand-dots',                 group: 'physiological' },
+    { id: 'postsmoke',   label: 'Post-Smoke',   icon: 'fa-solid fa-smoking',                   group: 'physiological' },
+    { id: 'tired',       label: 'Tired',        icon: 'fa-solid fa-bed',                       group: 'physiological' },
+    { id: 'withdrawal',  label: 'Withdrawal',   icon: 'fa-solid fa-person-falling',            group: 'physiological' },
     // Psychological
-    { id: 'angry',     label: 'Angry',      icon: 'fa-regular fa-face-angry',             group: 'psychological' },
-    { id: 'anxiety',   label: 'Anxiety',    icon: 'fa-solid fa-heart-pulse',              group: 'psychological' },
-    { id: 'boredom',   label: 'Boredom',    icon: 'fa-regular fa-face-meh',               group: 'psychological' },
-    { id: 'lonely',    label: 'Lonely',     icon: 'fa-solid fa-person',                   group: 'psychological' },
-    { id: 'restless',  label: 'Restless',   icon: 'fa-solid fa-person-running',           group: 'psychological' },
-    { id: 'sad',       label: 'Sad',        icon: 'fa-regular fa-face-sad-tear',          group: 'psychological' },
-    { id: 'stress',    label: 'Stress',     icon: 'fa-solid fa-brain',                    group: 'psychological' },
+    { id: 'angry',       label: 'Angry',        icon: 'fa-regular fa-face-angry',              group: 'psychological' },
+    { id: 'anxiety',     label: 'Anxiety',      icon: 'fa-solid fa-heart-pulse',               group: 'psychological' },
+    { id: 'boredom',     label: 'Boredom',      icon: 'fa-regular fa-face-meh',                group: 'psychological' },
+    { id: 'lonely',      label: 'Lonely',       icon: 'fa-solid fa-person',                    group: 'psychological' },
+    { id: 'restless',    label: 'Restless',     icon: 'fa-solid fa-person-running',            group: 'psychological' },
+    { id: 'reward',      label: 'Reward',       icon: 'fa-solid fa-trophy',                    group: 'psychological' },
+    { id: 'sad',         label: 'Sad',          icon: 'fa-regular fa-face-sad-tear',           group: 'psychological' },
+    { id: 'stress',      label: 'Stress',       icon: 'fa-solid fa-brain',                     group: 'psychological' },
     // Social
-    { id: 'gathering',   label: 'Gathering',icon: 'fa-solid fa-champagne-glasses',        group: 'social' },
-    { id: 'pressure',    label: 'Pressure', icon: 'fa-solid fa-hand-point-right',         group: 'social' },
-    { id: 'withsmokers', label: 'Smokers',  icon: 'fa-solid fa-people-group',            group: 'social' },
+    { id: 'gathering',   label: 'Gathering',    icon: 'fa-solid fa-champagne-glasses',         group: 'social' },
+    { id: 'pressure',    label: 'Pressure',     icon: 'fa-solid fa-hand-point-right',          group: 'social' },
+    { id: 'withsmokers', label: 'Smokers',      icon: 'fa-solid fa-people-group',             group: 'social' },
     // Situational
-    { id: 'afterwork', label: 'After Work', icon: 'fa-solid fa-building-circle-arrow-right', group: 'situational' },
-    { id: 'commuting', label: 'Commuting',  icon: 'fa-solid fa-bus',                     group: 'situational' },
-    { id: 'driving',   label: 'Driving',    icon: 'fa-solid fa-car',                     group: 'situational' },
-    { id: 'exercise',  label: 'Exercise',   icon: 'fa-solid fa-dumbbell',                group: 'situational' },
-    { id: 'hobby',     label: 'Hobby',      icon: 'fa-solid fa-dice',                    group: 'situational' },
-    { id: 'outdoor',   label: 'Outdoors',   icon: 'fa-solid fa-tree',                    group: 'situational' },
-    { id: 'phonecall', label: 'Phone Call', icon: 'fa-solid fa-phone',                   group: 'situational' },
-    { id: 'relaxing',  label: 'Relaxing',   icon: 'fa-solid fa-couch',                   group: 'situational' },
-    { id: 'waiting',   label: 'Waiting',    icon: 'fa-regular fa-clock',                 group: 'situational' },
-    { id: 'work',      label: 'Work',       icon: 'fa-solid fa-briefcase',               group: 'situational' },
-    { id: 'workbreak', label: 'Work Break', icon: 'fa-solid fa-business-time',           group: 'situational' },
+    { id: 'afterwork',   label: 'After Work',   icon: 'fa-solid fa-building-circle-arrow-right', group: 'situational' },
+    { id: 'commuting',   label: 'Commuting',    icon: 'fa-solid fa-bus',                       group: 'situational' },
+    { id: 'driving',     label: 'Driving',      icon: 'fa-solid fa-car',                       group: 'situational' },
+    { id: 'exercise',    label: 'Exercise',     icon: 'fa-solid fa-dumbbell',                  group: 'situational' },
+    { id: 'hobby',       label: 'Hobby',        icon: 'fa-solid fa-dice',                      group: 'situational' },
+    { id: 'outdoor',     label: 'Outdoors',     icon: 'fa-solid fa-tree',                      group: 'situational' },
+    { id: 'phonecall',   label: 'Phone Call',   icon: 'fa-solid fa-phone',                     group: 'situational' },
+    { id: 'relaxing',    label: 'Relaxing',     icon: 'fa-solid fa-couch',                     group: 'situational' },
+    { id: 'waiting',     label: 'Waiting',      icon: 'fa-regular fa-clock',                   group: 'situational' },
+    { id: 'work',        label: 'Work',         icon: 'fa-solid fa-briefcase',                 group: 'situational' },
+    { id: 'workbreak',   label: 'Work Break',   icon: 'fa-solid fa-business-time',             group: 'situational' },
 ];
 
 const TRIGGER_GROUPS = [
@@ -144,10 +149,11 @@ class CigLogTracker {
 
         // Trigger sections
         this.cravingTriggerToggle  = $('cravingTriggerToggle');
-        this.cravingTriggerSection = $('cravingTriggerSection');
         this.smokeTriggerToggle    = $('smokeTriggerToggle');
-        this.smokeTriggerSection   = $('smokeTriggerSection');
-        this._activeTriggerPopover = null;
+        this._pendingCravingTriggers = [];
+        this._pendingSmokeTriggers   = [];
+        this._triggerModalSource     = null;
+        this._activeTriggerPopover   = null;
 
         // Import
         this.csvFile = $('csvFile');
@@ -233,12 +239,12 @@ class CigLogTracker {
             this._closeModal('skippedDay');
         });
 
-        // Trigger toggles
+        // Trigger toggles — open global trigger modal
         document.getElementById('cravingTriggerToggle').addEventListener('click', () => {
-            this.cravingTriggerSection.classList.toggle('open');
+            this._openGlobalTriggerModal('craving', this._pendingCravingTriggers);
         });
         document.getElementById('smokeTriggerToggle').addEventListener('click', () => {
-            this.smokeTriggerSection.classList.toggle('open');
+            this._openGlobalTriggerModal('smoke', this._pendingSmokeTriggers);
         });
 
         // Add-craving modal
@@ -783,9 +789,9 @@ class CigLogTracker {
         this.cravingHH.value = '';
         this.cravingMM.value = '';
         this.saveCravingBtn.disabled = true;
-        // Reset trigger section
-        this.cravingTriggerSection.classList.remove('open');
-        this._buildTriggerChips(this.cravingTriggerSection, []);
+        // Reset pending triggers
+        this._pendingCravingTriggers = [];
+        this.cravingTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> + Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smartTimeDefaults, this.cravingHH, this.cravingMM,
                 () => this._updateSaveBtn('craving'));
@@ -805,7 +811,7 @@ class CigLogTracker {
         }
         const idx = this._getEntryIdx(this.activeDate);
         if (idx === -1) { this._toast('Error: entry not found'); return; }
-        const triggers = this._getSelectedTriggers(this.cravingTriggerSection);
+        const triggers = this._pendingCravingTriggers || [];
         this.entries[idx].cravings.push({ time: `${hh}:${mm}`, intensity: sel.dataset.intensity, triggers });
         this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
         if (this.entries[idx].skipped) this.entries[idx].skipped = false;
@@ -824,9 +830,9 @@ class CigLogTracker {
         this.smokeMM.value = '';
         this.cigaretteCount.value = '1';
         this.saveSmokeBtn.disabled = true;
-        // Reset trigger section
-        this.smokeTriggerSection.classList.remove('open');
-        this._buildTriggerChips(this.smokeTriggerSection, []);
+        // Reset pending triggers
+        this._pendingSmokeTriggers = [];
+        this.smokeTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> + Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smokeTimeDefaults, this.smokeHH, this.smokeMM,
                 () => this._updateSaveBtn('smoke'));
@@ -846,7 +852,7 @@ class CigLogTracker {
         }
         const idx = this._getEntryIdx(this.activeDate);
         if (idx === -1) { this._toast('Error: entry not found'); return; }
-        const triggers = this._getSelectedTriggers(this.smokeTriggerSection);
+        const triggers = this._pendingSmokeTriggers || [];
         this.entries[idx].smoked.push({
             time: `${hh}:${mm}`, count,
             pricePerCigarette: this.settings.cigarettePrice,
@@ -1035,7 +1041,20 @@ class CigLogTracker {
                     pop.className = 'trigger-popover';
                     pop.textContent = bolt.dataset.triggers;
                     pop._anchor = bolt;
-                    bolt.appendChild(pop);
+                    // Viewport-aware positioning
+                    document.body.appendChild(pop);
+                    const boltRect = bolt.getBoundingClientRect();
+                    const popH = pop.offsetHeight;
+                    const spaceAbove = boltRect.top;
+                    const spaceBelow = window.innerHeight - boltRect.bottom;
+                    if (spaceAbove > popH + 10 || spaceAbove > spaceBelow) {
+                        // Position above
+                        pop.style.top  = `${boltRect.top - popH - 8}px`;
+                    } else {
+                        // Position below
+                        pop.style.top  = `${boltRect.bottom + 8}px`;
+                    }
+                    pop.style.left = `${Math.max(8, Math.min(boltRect.left + boltRect.width/2 - pop.offsetWidth/2, window.innerWidth - pop.offsetWidth - 8))}px`;
                     this._activeTriggerPopover = pop;
                 });
             });
@@ -1146,22 +1165,35 @@ class CigLogTracker {
         return el;
     }
 
-    _openEditTriggerModal(rowEl, currentTriggers) {
-        this._editTriggerTarget = rowEl;
+    _openGlobalTriggerModal(source, currentTriggers = []) {
+        this._triggerModalSource = source;
         const grid = document.getElementById('editTriggerChipGrid');
         this._buildTriggerChips(grid, currentTriggers);
         this._openModal('editTrigger');
     }
 
+    _openEditTriggerModal(rowEl, currentTriggers) {
+        this._openGlobalTriggerModal(rowEl, currentTriggers);
+    }
+
     _confirmEditTriggers() {
         const grid = document.getElementById('editTriggerChipGrid');
         const selected = this._getSelectedTriggers(grid);
-        if (this._editTriggerTarget) {
-            this._editTriggerTarget.dataset.triggers = JSON.stringify(selected);
-            const btn = this._editTriggerTarget.querySelector('.edit-trigger-btn');
-            if (btn) {
-                btn.classList.toggle('has-triggers', selected.length > 0);
-            }
+        const source = this._triggerModalSource;
+
+        if (source === 'craving') {
+            this._pendingCravingTriggers = selected;
+            const label = selected.length ? `⚡ ${selected.length} trigger${selected.length > 1 ? 's' : ''}` : '+ Add Trigger';
+            this.cravingTriggerToggle.innerHTML = `<i class="fa-solid fa-bolt"></i> ${label}`;
+        } else if (source === 'smoke') {
+            this._pendingSmokeTriggers = selected;
+            const label = selected.length ? `⚡ ${selected.length} trigger${selected.length > 1 ? 's' : ''}` : '+ Add Trigger';
+            this.smokeTriggerToggle.innerHTML = `<i class="fa-solid fa-bolt"></i> ${label}`;
+        } else if (source && typeof source === 'object') {
+            // Edit modal row element
+            source.dataset.triggers = JSON.stringify(selected);
+            const btn = source.querySelector('.edit-trigger-btn');
+            if (btn) btn.classList.toggle('has-triggers', selected.length > 0);
         }
         this._closeModal('editTrigger');
     }
@@ -1964,6 +1996,14 @@ class CigLogTracker {
                     <li>Add Trigger button styled to match monochrome theme.</li>
                     <li>CSV export now includes Triggers column.</li>
                     <li>CSV import parses Triggers column; backwards compatible with older exports.</li>
+                </ul>
+                <h4>Version 1.2.4 | 16-05-2026</h4>
+                <ul>
+                    <li>New triggers added: Habit, Pain, Post-Smoke, Withdrawal, Reward.</li>
+                    <li>Add Trigger button in Add Craving and Log Cigarette modals now opens a dedicated modal instead of expanding inline.</li>
+                    <li>Trigger popover in Timeline now viewport-aware and no longer clips at modal edges.</li>
+                    <li>Get started modal buttons now stack vertically.</li>
+                    <li>Time preset buttons now display in 3-column grid on mobile.</li>                    
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>

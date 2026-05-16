@@ -132,9 +132,9 @@
                     <li><i class="fa-solid fa-file-arrow-down" style="width:20px;"></i> Load from a previous file</li>
                 </ul>
                 <p class="help-text">All data is stored locally.</p>
-                <div class="form-actions create-today-btn-row">
-                    <button id="createTodayYes" class="btn btn-primary"><i class="fa-solid fa-file"></i> Start Fresh Log</button>
-                    <button id="createTodayLoad" class="btn btn-secondary"><i class="fa-solid fa-file-arrow-down"></i> Load from File</button>
+                <div class="form-actions" style="flex-direction:column;align-items:center;">
+                    <button id="createTodayYes" class="btn btn-primary" style="width:100%;max-width:280px;"><i class="fa-solid fa-file"></i> Start Fresh Log</button>
+                    <button id="createTodayLoad" class="btn btn-secondary" style="width:100%;max-width:280px;"><i class="fa-solid fa-file-arrow-down"></i> Load from File</button>
                 </div>
                 <input type="file" id="csvFileFirstRun" accept=".csv" style="display:none;">
             </div>
@@ -182,7 +182,6 @@
                     <button class="trigger-toggle-btn" id="cravingTriggerToggle">
                         <i class="fa-solid fa-bolt"></i> + Add Trigger
                     </button>
-                    <div class="trigger-section" id="cravingTriggerSection"></div>
                 </div>
                 <div class="form-actions">
                     <button id="saveCraving" class="btn btn-primary" disabled>Save Craving</button>
@@ -219,7 +218,6 @@
                     <button class="trigger-toggle-btn" id="smokeTriggerToggle">
                         <i class="fa-solid fa-bolt"></i> + Add Trigger
                     </button>
-                    <div class="trigger-section" id="smokeTriggerSection"></div>
                 </div>
                 <div class="form-actions">
                     <button id="saveSmoke" class="btn btn-primary" disabled>Save</button>
@@ -385,7 +383,7 @@
                     <li>Use the side menu for charts, export/import, and settings</li>
                 </ul>
                 <p class="motivation">"Log smokes and cravings - CigLog shows the toll."</p>
-                <div class="version">Version 1.2.3 | 14-05-2026</div>
+                <div class="version">Version 1.2.4 | 16-05-2026</div>
             </div>
         </div>
     </div>
