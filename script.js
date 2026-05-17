@@ -7,18 +7,18 @@ const TRIGGERS = [
     { id: 'aftermeal',   label: 'After Meal',  icon: 'fa-solid fa-utensils',                  group: 'physiological' },
     { id: 'alcohol',     label: 'Alcohol',      icon: 'fa-solid fa-wine-glass',                group: 'physiological' },
     { id: 'coffee',      label: 'Coffee/Tea',   icon: 'fa-solid fa-mug-hot',                   group: 'physiological' },
-    { id: 'habit',       label: 'Habit',        icon: 'fa-solid fa-rotate',                    group: 'physiological' },
     { id: 'hunger',      label: 'Hunger',       icon: 'fa-solid fa-burger',                    group: 'physiological' },
     { id: 'morning',     label: 'Morning',      icon: 'fa-solid fa-toilet-paper',              group: 'physiological' },
-    { id: 'pain',        label: 'Pain',         icon: 'fa-solid fa-hand-dots',                 group: 'physiological' },
+    { id: 'pain',        label: 'Pain',         icon: 'fa-solid fa-bandage',                   group: 'physiological' },
     { id: 'postsmoke',   label: 'Post-Smoke',   icon: 'fa-solid fa-smoking',                   group: 'physiological' },
     { id: 'tired',       label: 'Tired',        icon: 'fa-solid fa-bed',                       group: 'physiological' },
     { id: 'withdrawal',  label: 'Withdrawal',   icon: 'fa-solid fa-person-falling',            group: 'physiological' },
     // Psychological
+    { id: 'alone',       label: 'Alone',        icon: 'fa-solid fa-person',                    group: 'psychological' },
     { id: 'angry',       label: 'Angry',        icon: 'fa-regular fa-face-angry',              group: 'psychological' },
     { id: 'anxiety',     label: 'Anxiety',      icon: 'fa-solid fa-heart-pulse',               group: 'psychological' },
     { id: 'boredom',     label: 'Boredom',      icon: 'fa-regular fa-face-meh',                group: 'psychological' },
-    { id: 'lonely',      label: 'Lonely',       icon: 'fa-solid fa-person',                    group: 'psychological' },
+    { id: 'habit',       label: 'Habit',        icon: 'fa-solid fa-rotate',                    group: 'psychological' },
     { id: 'restless',    label: 'Restless',     icon: 'fa-solid fa-person-running',            group: 'psychological' },
     { id: 'reward',      label: 'Reward',       icon: 'fa-solid fa-trophy',                    group: 'psychological' },
     { id: 'sad',         label: 'Sad',          icon: 'fa-regular fa-face-sad-tear',           group: 'psychological' },
@@ -28,10 +28,11 @@ const TRIGGERS = [
     { id: 'pressure',    label: 'Pressure',     icon: 'fa-solid fa-hand-point-right',          group: 'social' },
     { id: 'withsmokers', label: 'Smokers',      icon: 'fa-solid fa-people-group',             group: 'social' },
     // Situational
+    { id: 'activity',    label: 'Activity',     icon: 'fa-solid fa-dumbbell',                  group: 'situational' },
     { id: 'afterwork',   label: 'After Work',   icon: 'fa-solid fa-building-circle-arrow-right', group: 'situational' },
     { id: 'commuting',   label: 'Commuting',    icon: 'fa-solid fa-bus',                       group: 'situational' },
     { id: 'driving',     label: 'Driving',      icon: 'fa-solid fa-car',                       group: 'situational' },
-    { id: 'exercise',    label: 'Exercise',     icon: 'fa-solid fa-dumbbell',                  group: 'situational' },
+    { id: 'focus',       label: 'Focus',        icon: 'fa-solid fa-crosshairs',                group: 'situational' },
     { id: 'hobby',       label: 'Hobby',        icon: 'fa-solid fa-dice',                      group: 'situational' },
     { id: 'outdoor',     label: 'Outdoors',     icon: 'fa-solid fa-tree',                      group: 'situational' },
     { id: 'phonecall',   label: 'Phone Call',   icon: 'fa-solid fa-phone',                     group: 'situational' },
@@ -2017,6 +2018,14 @@ class CigLogTracker {
                     <li>Amber square colour corrected in timeline.</li>
                     <li>Trigger modal Confirm/Cancel buttons now sticky — always visible while scrolling chips.</li>
                     <li>Button order standardised - Cancel left, primary action right throughout all modals.</li>                    
+                </ul>
+                <h4>Version 1.2.7 | 17-05-2026</h4>
+                <ul>
+                    <li>Pain icon updated to bandage.</li>
+                    <li>Habit moved from Physiological to Psychological category.</li>
+                    <li>Lonely renamed to Alone.</li>
+                    <li>Exercise renamed to Activity.</li>
+                    <li>Focus trigger added to Situational category.</li>
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
