@@ -2012,6 +2012,12 @@ class CigLogTracker {
                     <li>MLL column header changed to clock icon.</li>
                     <li>Skull icon replaced with amber square in timeline.</li>                    
                 </ul>
+                <h4>Version 1.2.6 | 17-05-2026</h4>
+                <ul>
+                    <li>Amber square colour corrected in timeline.</li>
+                    <li>Trigger modal Confirm/Cancel buttons now sticky — always visible while scrolling chips.</li>
+                    <li>Button order standardised - Cancel left, primary action right throughout all modals.</li>                    
+                </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
         `;
