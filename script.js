@@ -1004,7 +1004,7 @@ class CigLogTracker {
                 el.className = 'timeline-entry';
                 const indicator = ev.type === 'craving'
                     ? `<span class="timeline-intensity" style="background-color:${intensityColor[ev.intensity]}"></span>`
-                    : `<span class="timeline-skull"><i class="fa-solid fa-square" style="color:var(--yellow);font-size:0.7rem;"></i></span>`;
+                    : `<span class="timeline-skull"><i class="fa-solid fa-square" style="color:var(--amber);font-size:0.7rem;"></i></span>`;
                 const hasTriggers = ev.triggers && ev.triggers.length > 0;
                 const boltClass   = hasTriggers ? 'timeline-bolt has-triggers' : 'timeline-bolt';
                 const triggerNames = hasTriggers

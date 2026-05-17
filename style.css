@@ -20,6 +20,7 @@
     --chart-cravings: #909090;
     --column-count: 7;
     --trigger-color: #B4C6E7;
+    --amber: #f1976d;
 }
 
 body {
@@ -1054,6 +1055,17 @@ input[type="number"] {
 .trigger-chip.selected i,
 .trigger-chip.selected span {
     color: var(--trigger-color);
+}
+
+/* Sticky confirm/cancel in trigger modal */
+#editTriggerModal .form-actions {
+    position: sticky;
+    bottom: 0;
+    background-color: var(--bg-primary);
+    padding: 12px 0 4px;
+    margin-top: 8px;
+    z-index: 1;
+    border-top: 1px solid rgba(217, 217, 217, 0.1);
 }
 
 .notes-section {
