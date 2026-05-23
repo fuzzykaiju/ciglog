@@ -4,42 +4,42 @@
 
 const TRIGGERS = [
     // Physiological
-    { id: 'aftermeal',   label: 'After Meal',  icon: 'fa-solid fa-utensils',                  group: 'physiological' },
-    { id: 'alcohol',     label: 'Alcohol',      icon: 'fa-solid fa-wine-glass',                group: 'physiological' },
-    { id: 'coffee',      label: 'Coffee/Tea',   icon: 'fa-solid fa-mug-hot',                   group: 'physiological' },
-    { id: 'hunger',      label: 'Hunger',       icon: 'fa-solid fa-burger',                    group: 'physiological' },
-    { id: 'morning',     label: 'Morning',      icon: 'fa-solid fa-toilet-paper',              group: 'physiological' },
-    { id: 'pain',        label: 'Pain',         icon: 'fa-solid fa-bandage',                   group: 'physiological' },
-    { id: 'postsmoke',   label: 'Post-Smoke',   icon: 'fa-solid fa-smoking',                   group: 'physiological' },
-    { id: 'tired',       label: 'Tired',        icon: 'fa-solid fa-bed',                       group: 'physiological' },
-    { id: 'withdrawal',  label: 'Withdrawal',   icon: 'fa-solid fa-person-falling',            group: 'physiological' },
+    { id: 'aftermeal',   label: 'After Meal',  icon: 'fork_spoon',      group: 'physiological' },
+    { id: 'alcohol',     label: 'Alcohol',      icon: 'local_bar',       group: 'physiological' },
+    { id: 'coffee',      label: 'Coffee/Tea',   icon: 'emoji_food_beverage', group: 'physiological' },
+    { id: 'hunger',      label: 'Hunger',       icon: 'lunch_dining',    group: 'physiological' },
+    { id: 'morning',     label: 'Morning',      icon: 'wb_sunny',        group: 'physiological' },
+    { id: 'pain',        label: 'Pain',         icon: 'healing',         group: 'physiological' },
+    { id: 'postsmoke',   label: 'Post-Smoke',   icon: 'smoking_rooms',   group: 'physiological' },
+    { id: 'tired',       label: 'Tired',        icon: 'hotel',           group: 'physiological' },
+    { id: 'withdrawal',  label: 'Withdrawal',   icon: 'falling',         group: 'physiological' },
     // Psychological
-    { id: 'alone',       label: 'Alone',        icon: 'fa-solid fa-person',                    group: 'psychological' },
-    { id: 'angry',       label: 'Angry',        icon: 'fa-regular fa-face-angry',              group: 'psychological' },
-    { id: 'anxiety',     label: 'Anxiety',      icon: 'fa-solid fa-heart-pulse',               group: 'psychological' },
-    { id: 'boredom',     label: 'Boredom',      icon: 'fa-regular fa-face-meh',                group: 'psychological' },
-    { id: 'habit',       label: 'Habit',        icon: 'fa-solid fa-rotate',                    group: 'psychological' },
-    { id: 'restless',    label: 'Restless',     icon: 'fa-solid fa-person-running',            group: 'psychological' },
-    { id: 'reward',      label: 'Reward',       icon: 'fa-solid fa-trophy',                    group: 'psychological' },
-    { id: 'sad',         label: 'Sad',          icon: 'fa-regular fa-face-sad-tear',           group: 'psychological' },
-    { id: 'stress',      label: 'Stress',       icon: 'fa-solid fa-brain',                     group: 'psychological' },
+    { id: 'alone',       label: 'Alone',        icon: 'man',             group: 'psychological' },
+    { id: 'angry',       label: 'Angry',        icon: 'sentiment_extremely_dissatisfied', group: 'psychological' },
+    { id: 'anxiety',     label: 'Anxiety',      icon: 'pulse_alert',     group: 'psychological' },
+    { id: 'boredom',     label: 'Boredom',      icon: 'sentiment_neutral', group: 'psychological' },
+    { id: 'habit',       label: 'Habit',        icon: 'cached',          group: 'psychological' },
+    { id: 'restless',    label: 'Restless',     icon: 'directions_run',  group: 'psychological' },
+    { id: 'reward',      label: 'Reward',       icon: 'trophy',          group: 'psychological' },
+    { id: 'sad',         label: 'Sad',          icon: 'sentiment_dissatisfied', group: 'psychological' },
+    { id: 'stress',      label: 'Stress',       icon: 'psychology_alt',  group: 'psychological' },
     // Social
-    { id: 'gathering',   label: 'Gathering',    icon: 'fa-solid fa-champagne-glasses',         group: 'social' },
-    { id: 'pressure',    label: 'Pressure',     icon: 'fa-solid fa-hand-point-right',          group: 'social' },
-    { id: 'withsmokers', label: 'Smokers',      icon: 'fa-solid fa-people-group',             group: 'social' },
+    { id: 'gathering',   label: 'Gathering',    icon: 'nightlife',       group: 'social' },
+    { id: 'pressure',    label: 'Pressure',     icon: 'moving_ministry', group: 'social' },
+    { id: 'withsmokers', label: 'Smokers',      icon: 'diversity_3',     group: 'social' },
     // Situational
-    { id: 'activity',    label: 'Activity',     icon: 'fa-solid fa-dumbbell',                  group: 'situational' },
-    { id: 'afterwork',   label: 'After Work',   icon: 'fa-solid fa-building-circle-arrow-right', group: 'situational' },
-    { id: 'commuting',   label: 'Commuting',    icon: 'fa-solid fa-bus',                       group: 'situational' },
-    { id: 'driving',     label: 'Driving',      icon: 'fa-solid fa-car',                       group: 'situational' },
-    { id: 'focus',       label: 'Focus',        icon: 'fa-solid fa-crosshairs',                group: 'situational' },
-    { id: 'hobby',       label: 'Hobby',        icon: 'fa-solid fa-dice',                      group: 'situational' },
-    { id: 'outdoor',     label: 'Outdoors',     icon: 'fa-solid fa-tree',                      group: 'situational' },
-    { id: 'phonecall',   label: 'Phone Call',   icon: 'fa-solid fa-phone',                     group: 'situational' },
-    { id: 'relaxing',    label: 'Relaxing',     icon: 'fa-solid fa-couch',                     group: 'situational' },
-    { id: 'waiting',     label: 'Waiting',      icon: 'fa-regular fa-clock',                   group: 'situational' },
-    { id: 'work',        label: 'Work',         icon: 'fa-solid fa-briefcase',                 group: 'situational' },
-    { id: 'workbreak',   label: 'Work Break',   icon: 'fa-solid fa-business-time',             group: 'situational' },
+    { id: 'activity',    label: 'Activity',     icon: 'emoji_people',    group: 'situational' },
+    { id: 'afterwork',   label: 'After Work',   icon: 'moving_ministry', group: 'situational' },
+    { id: 'commuting',   label: 'Commuting',    icon: 'train',           group: 'situational' },
+    { id: 'driving',     label: 'Driving',      icon: 'directions_car',  group: 'situational' },
+    { id: 'focus',       label: 'Focus',        icon: 'target',          group: 'situational' },
+    { id: 'hobby',       label: 'Hobby',        icon: 'interests',       group: 'situational' },
+    { id: 'outdoor',     label: 'Outdoors',     icon: 'nature',          group: 'situational' },
+    { id: 'phonecall',   label: 'Phone Call',   icon: 'call',            group: 'situational' },
+    { id: 'relaxing',    label: 'Relaxing',     icon: 'weekend',         group: 'situational' },
+    { id: 'waiting',     label: 'Waiting',      icon: 'schedule',        group: 'situational' },
+    { id: 'work',        label: 'Work',         icon: 'work',            group: 'situational' },
+    { id: 'workbreak',   label: 'Work Break',   icon: 'work_history',    group: 'situational' },
 ];
 
 const TRIGGER_GROUPS = [
@@ -629,7 +629,7 @@ class CigLogTracker {
             const custGrid = document.createElement('div');
             custGrid.className = 'trigger-chip-grid';
             custom.forEach((label, i) => {
-                const t = { id: `custom_${i}`, label, icon: 'fa-solid fa-tag' };
+                const t = { id: `custom_${i}`, label, icon: 'interests' };
                 custGrid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
             });
             container.appendChild(custLabel);
@@ -656,7 +656,7 @@ class CigLogTracker {
         const chip = document.createElement('button');
         chip.className = `trigger-chip${selected ? ' selected' : ''}`;
         chip.dataset.triggerId = trigger.id;
-        chip.innerHTML = `<i class="${trigger.icon}"></i><span>${trigger.label}</span>`;
+        chip.innerHTML = `<span class="ms">${trigger.icon}</span><span>${trigger.label}</span>`;
         chip.addEventListener('click', () => chip.classList.toggle('selected'));
         return chip;
     }
@@ -719,8 +719,8 @@ class CigLogTracker {
             row.className = `entry-row${isSkipped ? ' entry-skipped' : ''}`;
 
             const infoBtn = isSkipped
-                ? `<button class="info-btn skipped-btn" data-date="${entry.date}"><i class="fa-solid fa-triangle-exclamation"></i></button>`
-                : `<button class="info-btn" data-date="${entry.date}"><i class="fa-solid fa-angle-down"></i></button>`;
+                ? `<button class="info-btn skipped-btn" data-date="${entry.date}"><span class="ms">warning</span></button>`
+                : `<button class="info-btn" data-date="${entry.date}"><span class="ms">keyboard_arrow_down</span></button>`;
 
             row.innerHTML = `
                 <div class="entry-cell date-cell">
@@ -736,7 +736,7 @@ class CigLogTracker {
                 <div class="entry-cell ${mllMins ? 'value-positive' : 'value-zero'}">${this._fmtMLLRow(mllMins)}</div>
                 <div class="entry-cell">${infoBtn}</div>
                 <div class="entry-cell">
-                    <button class="edit-btn" data-date="${entry.date}"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    <button class="edit-btn" data-date="${entry.date}"><span class="ms">more_vert</span></button>
                 </div>`;
             this.entriesTable.appendChild(row);
         });
@@ -746,7 +746,7 @@ class CigLogTracker {
         addRow.className = 'add-previous-row';
         addRow.innerHTML = `
             <div class="add-previous-content">
-                <button class="add-previous-btn"><i class="fas fa-plus-circle"></i></button>
+                <button class="add-previous-btn"><span class="ms">add_circle</span></button>
                 <span class="add-previous-text">Add entry for previous day</span>
             </div>`;
         addRow.querySelector('.add-previous-btn').addEventListener('click', () => this.addPreviousDay());
@@ -756,11 +756,10 @@ class CigLogTracker {
         const help = document.createElement('div');
         help.className = 'help-row';
         help.innerHTML = `
-            <p>• Tap <i class="fa-solid fa-face-tired"></i> or <i class="fa-solid fa-smoking"></i> in a row to log a craving or cigarette</p>
-            <p>• Tap <i class="fa-solid fa-angle-down"></i> to view the day's timeline &amp; notes</p>
-            <p>• Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</p>
-            <p>• Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days for more actions</p>
-            <p style="margin-top:18px;"><i class="fa-solid fa-road-barrier" style="color:var(--yellow);font-size:1.3rem;"></i></p>`;
+            <p>• Tap <span class="ms">sentiment_frustrated</span> or <span class="ms">smoking_rooms</span> in a row to log a craving or cigarette</p>
+            <p>• Tap <span class="ms">keyboard_arrow_down</span> to view the day's timeline &amp; notes</p>
+            <p>• Tap <span class="ms">more_vert</span> to edit or delete entries</p>
+            <p>• Tap <span class="ms">warning</span> on skipped days for more actions</p>`;
         this.entriesTable.appendChild(help);
 
         // Row event listeners
@@ -792,7 +791,7 @@ class CigLogTracker {
         this.saveCravingBtn.disabled = true;
         // Reset pending triggers
         this._pendingCravingTriggers = [];
-        this.cravingTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> Add Trigger';
+        this.cravingTriggerToggle.innerHTML = '<span class="ms">bolt</span> Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smartTimeDefaults, this.cravingHH, this.cravingMM,
                 () => this._updateSaveBtn('craving'));
@@ -833,7 +832,7 @@ class CigLogTracker {
         this.saveSmokeBtn.disabled = true;
         // Reset pending triggers
         this._pendingSmokeTriggers = [];
-        this.smokeTriggerToggle.innerHTML = '<i class="fa-solid fa-bolt"></i> Add Trigger';
+        this.smokeTriggerToggle.innerHTML = '<span class="ms">bolt</span> Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smokeTimeDefaults, this.smokeHH, this.smokeMM,
                 () => this._updateSaveBtn('smoke'));
@@ -1005,7 +1004,7 @@ class CigLogTracker {
                 el.className = 'timeline-entry';
                 const indicator = ev.type === 'craving'
                     ? `<span class="timeline-intensity" style="background-color:${intensityColor[ev.intensity]}"></span>`
-                    : `<span class="timeline-skull"><i class="fa-solid fa-square" style="color:var(--amber);font-size:0.7rem;"></i></span>`;
+                    : `<span class="timeline-skull"><span class="ms ms-fill" style="color:var(--amber);font-size:0.7rem;">square</span></span>`;
                 const hasTriggers = ev.triggers && ev.triggers.length > 0;
                 const boltClass   = hasTriggers ? 'timeline-bolt has-triggers' : 'timeline-bolt';
                 const triggerNames = hasTriggers
@@ -1019,9 +1018,9 @@ class CigLogTracker {
                     : '';
                 el.innerHTML = `
                     <span class="timeline-time">${ev.time}</span>
-                    <span class="timeline-emoji">${ev.type === 'craving' ? '<i class="fa-solid fa-face-tired fa-fw"></i>' : '<i class="fa-solid fa-smoking fa-fw"></i>'}</span>
+                    <span class="timeline-emoji">${ev.type === 'craving' ? '<span class="ms">sentiment_frustrated</span>' : '<span class="ms">smoking_rooms</span>'}</span>
                     <span class="timeline-interval">${ev.interval}</span>
-                    <span class="${boltClass}" data-triggers="${triggerNames}"><i class="fa-solid fa-bolt"></i></span>
+                    <span class="${boltClass}" data-triggers="${triggerNames}"><span class="ms">bolt</span></span>
                     ${indicator}`;
                 this.timelineContent.appendChild(el);
             });
@@ -1153,7 +1152,7 @@ class CigLogTracker {
                 <span class="count-separator">×</span>
                 <input type="number" class="edit-count" value="${smoke.count || 1}" min="1">
             </div>
-            <button type="button" class="edit-trigger-btn ${savedTriggers.length ? 'has-triggers' : ''}"><i class="fa-solid fa-bolt"></i></button>`;
+            <button type="button" class="edit-trigger-btn ${savedTriggers.length ? 'has-triggers' : ''}"><span class="ms">bolt</span></button>`;
         const hhInput = el.querySelector('.edit-hh');
         const mmInput = el.querySelector('.edit-mm');
         this._bindTimeInputs(hhInput, mmInput, () => {});
@@ -1183,11 +1182,11 @@ class CigLogTracker {
         if (source === 'craving') {
             this._pendingCravingTriggers = selected;
             const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
-            this.cravingTriggerToggle.innerHTML = `<i class="fa-solid fa-bolt"></i> ${label}`;
+            this.cravingTriggerToggle.innerHTML = `<span class="ms">bolt</span> ${label}`;
         } else if (source === 'smoke') {
             this._pendingSmokeTriggers = selected;
             const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
-            this.smokeTriggerToggle.innerHTML = `<i class="fa-solid fa-bolt"></i> ${label}`;
+            this.smokeTriggerToggle.innerHTML = `<span class="ms">bolt</span> ${label}`;
         } else if (source && typeof source === 'object') {
             // Edit modal row element
             source.dataset.triggers = JSON.stringify(selected);
@@ -1908,12 +1907,12 @@ class CigLogTracker {
             <h3>CigLog - Cigarette Logger</h3>
             <p>A data-driven PWA to help you log cigarettes craved and smoked, and get analytics for money spent and minutes of life lost.</p>
 
-            <h3><i class="fa-regular fa-circle-check"></i> Features</h3>
+            <h3><span class="ms">check_circle</span> Features</h3>
             <ul>
                 <li>Daily log - cravings count, cigarettes smoked, money spent, minutes of life lost</li>
                 <li>Precise tracking - log each event with exact time</li>
-                <li>Craving intensity - low <i class="fa-solid fa-circle" style="color: rgb(198, 224, 180);"></i>, mid <i class="fa-solid fa-circle" style="color: rgb(255, 230, 153);"></i>, high <i class="fa-solid fa-circle" style="color: rgb(255, 149, 149);"></i> for every craving</li>
-                <li>Smart time presets - "just now", "5 min ago", "1 hour ago"</li>
+                <li>Craving intensity - low <span class="ms ms-fill" style="color:var(--low-intensity);">circle</span>, mid <span class="ms ms-fill" style="color:var(--medium-intensity);">circle</span>, high <span class="ms ms-fill" style="color:var(--high-intensity);">circle</span> for every craving</li>
+                <li>Smart time presets - "just now", "5m ago", "1hr ago"</li>
                 <li>Timeline view - all events of a day in chronological order</li>
                 <li>Notes - add personal notes to each day</li>
                 <li>Full edit mode - modify or delete any entry</li>
@@ -1923,25 +1922,25 @@ class CigLogTracker {
                 <li>Installable - works offline, add to home screen</li>
             </ul>
 
-            <h3><i class="fa-solid fa-wrench"></i> How to Use</h3>
+            <h3><span class="ms">build_circle</span> How to Use</h3>
             <ul>
-                <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
-                <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
-                <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
-                <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
-                <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days for more actions</li>
-                <li>Open the side menu ☰ for charts, export/import, and settings</li>
+                <li>Tap <span class="ms">sentiment_frustrated</span> to log a craving with time &amp; intensity</li>
+                <li>Tap <span class="ms">smoking_rooms</span> to log a cigarette with time</li>
+                <li>Tap <span class="ms">keyboard_arrow_down</span> to see the day's timeline and add notes</li>
+                <li>Tap <span class="ms">more_vert</span> to edit or delete entries</li>
+                <li>Tap <span class="ms">warning</span> on skipped days for more actions</li>
+                <li>Open the side menu for charts, export/import, and settings</li>
             </ul>
 
-            <h3><i class="fa-solid fa-code"></i> Tech Stack</h3>
+            <h3><span class="ms">code_blocks</span> Tech Stack</h3>
             <ul>
                 <li>Plain HTML, CSS, Vanilla JS — no frameworks</li>
-                <li>Chart.js for charts, Font Awesome for icons</li>
+                <li>Chart.js for charts, Material Symbols for icons</li>
                 <li>Browser localStorage for data</li>
                 <li>Service Worker + Web App Manifest for offline &amp; installability</li>
             </ul>
 
-            <h3><i class="fa-regular fa-clipboard"></i> Release Notes</h3>
+            <h3><span class="ms">list_alt</span> Release Notes</h3>
             <ul>
                 <h4>Version 1.1.0 | 09-05-2026</h4>
                 <ul>
@@ -2026,6 +2025,10 @@ class CigLogTracker {
                     <li>Lonely renamed to Alone.</li>
                     <li>Exercise renamed to Activity.</li>
                     <li>Focus trigger added to Situational category.</li>
+                </ul>
+                <h4>Version 1.2.8 | 23-05-2026</h4>
+                <ul>
+                    <li>Font Awesome icons replaced with Google Material Icons.</li>                    
                 </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>

@@ -13,8 +13,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,0&icon_names=add_circle,bolt,build_circle,cached,calendar_month,call,chart_data,chat,check_circle,circle,close,code_blocks,delete,description,directions_bus,directions_car,directions_run,diversity_3,draft,edit_document,emoji_food_beverage,emoji_people,falling,file_export,file_open,fork_spoon,healing,help,history,hotel,info,interests,keyboard_arrow_down,list_alt,local_bar,lunch_dining,man,menu,more_vert,moving_ministry,nature,nightlife,payments,play_arrow,psychology_alt,pulse_alert,save,schedule,sentiment_dissatisfied,sentiment_extremely_dissatisfied,sentiment_frustrated,sentiment_neutral,sentiment_stressed,smoking_rooms,square,target,train,trophy,tune,warning,wb_sunny,weekend,work,work_history" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -26,17 +26,17 @@
                 <p id="lastSmokedTimer" class="tagline timer-label" aria-label="Tap for exact duration">Loading...</p>
                 <div id="timerPopover" class="timer-popover" style="display:none;"></div>
             </div>
-            <button id="menuToggle" class="menu-btn" aria-label="Open menu">☰</button>
+            <button id="menuToggle" class="menu-btn" aria-label="Open menu"><span class="ms ms-menu">menu</span></button>
         </div>
         <!-- Table Header -->
         <div class="table-header">
-            <div class="header-cell" data-tooltip="Date"><i class="fa-regular fa-calendar-days"></i></div>
-            <div class="header-cell" data-tooltip="Cravings"><i class="fa-solid fa-face-tired"></i></div>
-            <div class="header-cell" data-tooltip="Cigarettes Smoked"><i class="fa-solid fa-smoking"></i></div>
-            <div class="header-cell" data-tooltip="Money Spent"><i class="fa-solid fa-money-check-dollar"></i></div>
-            <div class="header-cell" data-tooltip="~ Minutes of Life Lost"><i class="fa-solid fa-clock-rotate-left"></i></div>
-            <div class="header-cell" data-tooltip="Info & Notes"><i class="fa-solid fa-circle-info"></i></div>
-            <div class="header-cell" data-tooltip="Edit Day"><i class="fa-solid fa-pen-to-square"></i></div>
+            <div class="header-cell" data-tooltip="Date"><span class="ms">calendar_month</span></div>
+            <div class="header-cell" data-tooltip="Cravings"><span class="ms">sentiment_frustrated</span></div>
+            <div class="header-cell" data-tooltip="Cigarettes Smoked"><span class="ms">smoking_rooms</span></div>
+            <div class="header-cell" data-tooltip="Money Spent"><span class="ms">payments</span></div>
+            <div class="header-cell" data-tooltip="~ Minutes of Life Lost"><span class="ms">history</span></div>
+            <div class="header-cell" data-tooltip="Info & Notes"><span class="ms">info</span></div>
+            <div class="header-cell" data-tooltip="Edit Day"><span class="ms">edit_document</span></div>
         </div>
     </header>
 
@@ -52,7 +52,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="settingsTitle">Welcome to CigLog</h2>
-                <button class="close-btn close-settings" id="closeSettings" style="display:none;">&times;</button>
+                <button class="close-btn close-settings" id="closeSettings" style="display:none;"><span class="ms">close</span></button>
             </div>
             <div class="modal-body settings-body">
                 <div class="form-group">
@@ -86,19 +86,19 @@
                 <!-- Custom Triggers — shown only after setup -->
                 <div id="customTriggerGroup" class="form-group" style="display:none;">
                     <button class="trigger-toggle-btn" id="customTriggerToggle" style="max-width:300px;">
-                        <i class="fa-solid fa-bolt"></i> Add Custom Triggers
+                        <span class="ms">bolt</span> Add Custom Triggers
                     </button>
                     <div id="customTriggerSection" class="trigger-section" style="max-width:300px;">
                         <div class="custom-trigger-input-row">
-                            <i class="fa-solid fa-tag"></i>
+                            <span class="ms">interests</span>
                             <input type="text" id="customTrigger0" maxlength="20" placeholder="Custom trigger name...">
                         </div>
                         <div class="custom-trigger-input-row">
-                            <i class="fa-solid fa-tag"></i>
+                            <span class="ms">interests</span>
                             <input type="text" id="customTrigger1" maxlength="20" placeholder="Custom trigger name...">
                         </div>
                         <div class="custom-trigger-input-row">
-                            <i class="fa-solid fa-tag"></i>
+                            <span class="ms">interests</span>
                             <input type="text" id="customTrigger2" maxlength="20" placeholder="Custom trigger name...">
                         </div>
                         <p class="help-text" style="margin-top:6px;">Up to 3 custom triggers</p>
@@ -107,13 +107,13 @@
                 <!-- Export/Import — shown only after setup -->
                 <div id="exportImportGroup" class="form-group" style="display:none;">
                     <div class="settings-export-import-row">
-                        <button id="exportSettingsBtn" class="btn btn-secondary"><i class="fa-solid fa-file-arrow-up"></i> Export Log</button>
-                        <button id="importSettingsBtn" class="btn btn-secondary"><i class="fa-solid fa-file-arrow-down"></i> Load Log</button>
+                        <button id="exportSettingsBtn" class="btn btn-secondary"><span class="ms">file_export</span> Export Log</button>
+                        <button id="importSettingsBtn" class="btn btn-secondary"><span class="ms">file_open</span> Load Log</button>
                     </div>
                     <input type="file" id="csvFileSettings" accept=".csv" style="display:none;">
                 </div>
                 <div class="form-actions">
-                    <button id="saveSettings" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Start Tracking</button>
+                    <button id="saveSettings" class="btn btn-primary"><span class="ms">play_arrow</span> Start Tracking</button>
                 </div>
             </div>
         </div>
@@ -128,13 +128,13 @@
             <div class="modal-body" style="text-align:center;">
                 <p>CigLog is a cigarettes craved and smoked logger that helps you log your daily smoking habits.</p>
                 <ul style="text-align:left;margin:12px auto;max-width:280px;color:var(--text-secondary);font-size:0.9rem;list-style:none;padding:0;">
-                    <li style="margin-bottom:6px;"><i class="fa-solid fa-file" style="width:20px;"></i> Start Fresh and a new zero-day entry will be created today</li>
-                    <li><i class="fa-solid fa-file-arrow-down" style="width:20px;"></i> Load from a previous file</li>
+                    <li style="margin-bottom:6px;"><span class="ms" style="width:20px;">draft</span> Start Fresh and a new zero-day entry will be created today</li>
+                    <li><span class="ms" style="width:20px;">file_open</span> Load from a previous file</li>
                 </ul>
                 <p class="help-text">All data is stored locally.</p>
                 <div class="form-actions" style="flex-direction:column;align-items:center;">
-                    <button id="createTodayYes" class="btn btn-primary" style="width:100%;max-width:280px;"><i class="fa-solid fa-file"></i> Start Fresh Log</button>
-                    <button id="createTodayLoad" class="btn btn-secondary" style="width:100%;max-width:280px;"><i class="fa-solid fa-file-arrow-down"></i> Load from File</button>
+                    <button id="createTodayYes" class="btn btn-primary" style="width:100%;max-width:280px;"><span class="ms">draft</span> Start Fresh Log</button>
+                    <button id="createTodayLoad" class="btn btn-secondary" style="width:100%;max-width:280px;"><span class="ms">file_open</span> Load from File</button>
                 </div>
                 <input type="file" id="csvFileFirstRun" accept=".csv" style="display:none;">
             </div>
@@ -146,7 +146,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="cravingTitle"></h2>
-                <button class="close-btn close-craving">&times;</button>
+                <button class="close-btn close-craving"><span class="ms">close</span></button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -165,22 +165,22 @@
                     <label>Craving Intensity:</label>
                     <div class="intensity-selector">
                         <button class="intensity-btn low" data-intensity="low">
-                            <i class="fa-solid fa-circle" style="color:var(--low-intensity);"></i>
+                            <span class="ms ms-fill" style="color:var(--low-intensity);">circle</span>
                             <span class="intensity-label">Low</span>
                         </button>
                         <button class="intensity-btn medium" data-intensity="medium">
-                            <i class="fa-solid fa-circle" style="color:var(--medium-intensity);"></i>
+                            <span class="ms ms-fill" style="color:var(--medium-intensity);">circle</span>
                             <span class="intensity-label">Mid</span>
                         </button>
                         <button class="intensity-btn high" data-intensity="high">
-                            <i class="fa-solid fa-circle" style="color:var(--high-intensity);"></i>
+                            <span class="ms ms-fill" style="color:var(--high-intensity);">circle</span>
                             <span class="intensity-label">High</span>
                         </button>
                     </div>
                 </div>
                 <div class="form-group">
                     <button class="trigger-toggle-btn" id="cravingTriggerToggle">
-                        <i class="fa-solid fa-bolt"></i> + Add Trigger
+                        <span class="ms">bolt</span> Add Trigger
                     </button>
                 </div>
                 <div class="form-actions">
@@ -195,7 +195,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="smokeTitle"></h2>
-                <button class="close-btn close-smoke">&times;</button>
+                <button class="close-btn close-smoke"><span class="ms">close</span></button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -216,7 +216,7 @@
                 </div>
                 <div class="form-group">
                     <button class="trigger-toggle-btn" id="smokeTriggerToggle">
-                        <i class="fa-solid fa-bolt"></i> + Add Trigger
+                        <span class="ms">bolt</span> Add Trigger
                     </button>
                 </div>
                 <div class="form-actions">
@@ -231,12 +231,12 @@
         <div class="modal-content info-modal">
             <div class="modal-header">
                 <h2 id="infoTitle"></h2>
-                <button class="close-btn close-info">&times;</button>
+                <button class="close-btn close-info"><span class="ms">close</span></button>
             </div>
             <div class="modal-body">
                 <div id="timelineContent" class="timeline-content"></div>
                 <div class="notes-section">
-                    <h3><i class="fa-regular fa-comment-dots"></i> Notes for this day:</h3>
+                    <h3><span class="ms">chat</span> Notes for this day:</h3>
                     <textarea id="dayNotes" rows="3" placeholder="Add notes about your day, triggers, feelings..."></textarea>
                     <button id="saveNotes" class="btn btn-primary">Save Notes</button>
                 </div>
@@ -249,11 +249,11 @@
         <div class="modal-content edit-modal">
             <div class="modal-header">
                 <h2 id="editDayTitle"></h2>
-                <button class="close-btn close-edit">&times;</button>
+                <button class="close-btn close-edit"><span class="ms">close</span></button>
             </div>
             <div class="modal-body">
                 <div class="edit-section">
-                    <h3><i class="fa-solid fa-face-tired"></i> Cravings:</h3>
+                    <h3><span class="ms">sentiment_frustrated</span> Cravings:</h3>
                     <div id="cravingsList" class="edit-list"></div>
                     <div class="edit-actions">
                         <button id="addCravingEdit" class="btn btn-secondary">Add</button>
@@ -261,7 +261,7 @@
                     </div>
                 </div>
                 <div class="edit-section">
-                    <h3><i class="fa-solid fa-smoking"></i> Smoked:</h3>
+                    <h3><span class="ms">smoking_rooms</span> Smoked:</h3>
                     <div id="smokedList" class="edit-list"></div>
                     <div class="edit-actions">
                         <button id="addSmokeEdit" class="btn btn-secondary">Add</button>
@@ -280,27 +280,27 @@
     <div id="sideMenu" class="side-menu">
         <div class="menu-header">
             <h3>Menu</h3>
-            <button id="closeMenu" class="close-btn">&times;</button>
+            <button id="closeMenu" class="close-btn"><span class="ms">close</span></button>
         </div>
         <div class="menu-items">
             <button id="chartBtn" class="menu-item">
-                <span class="menu-icon"><i class="fa-solid fa-chart-line"></i></span>
+                <span class="menu-icon"><span class="ms">chart_data</span></span>
                 <span>Show Chart</span>
             </button>
             <button id="settingsMenuBtn" class="menu-item">
-                <span class="menu-icon"><i class="fa-solid fa-sliders"></i></span>
+                <span class="menu-icon"><span class="ms">tune</span></span>
                 <span>Settings</span>
             </button>
             <button id="aboutBtn" class="menu-item">
-                <span class="menu-icon"><i class="fa-solid fa-book-open"></i></span>
+                <span class="menu-icon"><span class="ms">help</span></span>
                 <span>About</span>
             </button>
             <button id="readmeBtn" class="menu-item">
-                <span class="menu-icon"><i class="fa-brands fa-readme"></i></span>
+                <span class="menu-icon"><span class="ms">description</span></span>
                 <span>Read Me</span>
             </button>
             <button id="resetBtn" class="menu-item reset-menu-item">
-                <span class="menu-icon"><i class="fa-regular fa-trash-can"></i></span>
+                <span class="menu-icon"><span class="ms">delete</span></span>
                 <span>Reset All Data</span>
             </button>
         </div>
@@ -312,7 +312,7 @@
         <div class="modal-content chart-modal">
             <div class="modal-header">
                 <h2>Progress Charts</h2>
-                <button class="close-btn close-chart">&times;</button>
+                <button class="close-btn close-chart"><span class="ms">close</span></button>
             </div>
             <div class="modal-body chart-body">
                 <select id="timeRange" class="time-select" style="display:block;margin:0 auto 0;">
@@ -369,21 +369,21 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>About CigLog</h2>
-                <button class="close-btn close-about">&times;</button>
+                <button class="close-btn close-about"><span class="ms">close</span></button>
             </div>
             <div class="modal-body about-body">
                 <p>CigLog is a cigarette craving &amp; smoking logger. Log your daily cigarettes craved and smoked, and get analytics for your money spent and minutes of life lost.<br>Log immediately &amp; honestly - CigLog transforms entries into analytics, charts, &amp; timelines to help you spot patterns across various time ranges.</p>
                 <h3>How to use:</h3>
                 <ul>
-                    <li>Tap <i class="fa-solid fa-face-tired"></i> to log a craving with time &amp; intensity</li>
-                    <li>Tap <i class="fa-solid fa-smoking"></i> to log a cigarette with time</li>
-                    <li>Tap <i class="fa-solid fa-angle-down"></i> to see the day's timeline and add notes</li>
-                    <li>Tap <i class="fa-solid fa-ellipsis-vertical"></i> to edit or delete entries</li>
-                    <li>Tap <i class="fa-solid fa-triangle-exclamation"></i> on skipped days for more actions</li>
+                    <li>Tap <span class="ms">sentiment_frustrated</span> to log a craving with time &amp; intensity</li>
+                    <li>Tap <span class="ms">smoking_rooms</span> to log a cigarette with time</li>
+                    <li>Tap <span class="ms">keyboard_arrow_down</span> to see the day's timeline and add notes</li>
+                    <li>Tap <span class="ms">more_vert</span> to edit or delete entries</li>
+                    <li>Tap <span class="ms">warning</span> on skipped days for more actions</li>
                     <li>Use the side menu for charts, export/import, and settings</li>
                 </ul>
                 <p class="motivation">"Log smokes and cravings - CigLog shows the toll."</p>
-                <div class="version">Version 1.2.7 | 17-05-2026</div>
+                <div class="version">Version 1.2.8 | 23-05-2026</div>
             </div>
         </div>
     </div>
@@ -392,8 +392,8 @@
     <div id="readmeModal" class="modal">
         <div class="modal-content readme-modal">
             <div class="modal-header">
-                <h2><i class="fa-brands fa-readme"></i> Read Me</h2>
-                <button class="close-btn close-readme">&times;</button>
+                <h2><span class="ms">description</span> Read Me</h2>
+                <button class="close-btn close-readme"><span class="ms">close</span></button>
             </div>
             <div class="modal-body readme-body" id="readmeBody">
                 <!-- Content rendered by JS -->
@@ -406,7 +406,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Import CSV</h2>
-                <button class="close-btn close-import">&times;</button>
+                <button class="close-btn close-import"><span class="ms">close</span></button>
             </div>
             <div class="modal-body">
                 <input type="file" id="csvFile" accept=".csv" class="file-input">
@@ -420,7 +420,7 @@
     <div id="skippedDayModal" class="modal">
         <div class="modal-content actions-modal">
             <div class="modal-header">
-                <h2><i class="fa-solid fa-triangle-exclamation"></i> No Data Logged</h2>
+                <h2><span class="ms">warning</span> No Data Logged</h2>
             </div>
             <div class="modal-body" style="padding:20px;text-align:center;">
                 <p id="skippedDayMessage" style="margin-bottom:24px;color:var(--text-primary);"></p>
@@ -438,7 +438,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>Edit Triggers</h2>
-                <button class="close-btn close-edit-trigger">&times;</button>
+                <button class="close-btn close-edit-trigger"><span class="ms">close</span></button>
             </div>
             <div class="modal-body">
                 <div id="editTriggerChipGrid"></div>
@@ -473,15 +473,15 @@
     <div id="resetModal" class="modal">
         <div class="modal-content actions-modal">
             <div class="modal-header">
-                <h2><i class="fa-solid fa-triangle-exclamation"></i> Reset All Data</h2>
-                <button class="close-btn close-reset">&times;</button>
+                <h2><span class="ms">warning</span> Reset All Data</h2>
+                <button class="close-btn close-reset"><span class="ms">close</span></button>
             </div>
             <div class="modal-body" style="padding:20px;text-align:center;">
                 <p style="margin-bottom:12px;color:var(--text-primary);">This will permanently delete <strong>all entries and settings</strong>.</p>
                 <p style="margin-bottom:24px;color:var(--text-secondary);font-size:0.9rem;">This action cannot be undone.</p>
                 <div style="display:flex;gap:12px;justify-content:center;">
                     <button id="cancelReset" class="btn btn-ghost" style="flex:1;">Cancel</button>
-                    <button id="confirmReset" class="btn btn-danger" style="flex:1;"><i class="fa-regular fa-trash-can"></i> Reset</button>
+                    <button id="confirmReset" class="btn btn-danger" style="flex:1;"><span class="ms">delete</span> Reset</button>
                 </div>
             </div>
         </div>
