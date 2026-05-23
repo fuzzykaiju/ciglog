@@ -6,7 +6,6 @@ const ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
@@ -17,8 +16,7 @@ self.addEventListener('install', event => {
       return cache.addAll(['./index.html', './script.js', './style.css', './manifest.json'])
         .then(() => {
           return Promise.allSettled(
-            ['https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-             'https://cdn.jsdelivr.net/npm/chart.js'].map(url => cache.add(url).catch(() => {}))
+            ['https://cdn.jsdelivr.net/npm/chart.js'].map(url => cache.add(url).catch(() => {}))
           );
         });
     })

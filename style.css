@@ -26,9 +26,10 @@
 /* Material Symbols */
 .ms {
     font-family: 'Material Symbols Rounded';
+    font-feature-settings: 'liga' 1;
     font-weight: normal;
     font-style: normal;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     display: inline-block;
     line-height: 1;
     text-transform: none;
@@ -171,7 +172,7 @@ body {
 }
 
 .header-cell .ms {
-    font-size: 1.1rem;
+    font-size: 1.3rem;
 }
 
 .header-cell::after {
@@ -937,7 +938,7 @@ input[type="number"] {
     color: var(--trigger-color);
 }
 
-.timeline-skull {
+.timeline-square {
     color: var(--text-secondary);
     font-size: 0.75rem;
     text-align: center;
@@ -953,6 +954,14 @@ input[type="number"] {
     height: 12px;
     border-radius: 50%;
     justify-self: center;
+}
+
+.timeline-heading {
+    color: var(--text-primary);
+    font-weight: bold;
+    font-size: 1rem;
+    text-align: left;
+    margin-bottom: 10px;
 }
 
 /* Trigger popover */
@@ -1061,7 +1070,7 @@ input[type="number"] {
 
 .trigger-chip i,
 .trigger-chip .ms {
-    font-size: 1rem;
+    font-size: 1.5rem;
     color: var(--text-secondary);
 }
 
@@ -1103,6 +1112,9 @@ input[type="number"] {
 
 .notes-section h3 {
     color: var(--text-primary);
+    font-weight: bold;
+    font-size: 1rem;
+    text-align: left;
     margin-bottom: 10px;
 }
 
@@ -1886,5 +1898,9 @@ input[type="number"] {
     
     .date-year {
         font-size: 0.8rem;
+    }
+
+    .title-dot {
+    color: var(--amber);      
     }
 }

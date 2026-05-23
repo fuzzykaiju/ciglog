@@ -8,7 +8,7 @@ const TRIGGERS = [
     { id: 'alcohol',     label: 'Alcohol',      icon: 'local_bar',       group: 'physiological' },
     { id: 'coffee',      label: 'Coffee/Tea',   icon: 'emoji_food_beverage', group: 'physiological' },
     { id: 'hunger',      label: 'Hunger',       icon: 'lunch_dining',    group: 'physiological' },
-    { id: 'morning',     label: 'Morning',      icon: 'wb_sunny',        group: 'physiological' },
+    { id: 'morning',     label: 'Morning',      icon: 'sunny',        group: 'physiological' },
     { id: 'pain',        label: 'Pain',         icon: 'healing',         group: 'physiological' },
     { id: 'postsmoke',   label: 'Post-Smoke',   icon: 'smoking_rooms',   group: 'physiological' },
     { id: 'tired',       label: 'Tired',        icon: 'hotel',           group: 'physiological' },
@@ -19,16 +19,16 @@ const TRIGGERS = [
     { id: 'anxiety',     label: 'Anxiety',      icon: 'pulse_alert',     group: 'psychological' },
     { id: 'boredom',     label: 'Boredom',      icon: 'sentiment_neutral', group: 'psychological' },
     { id: 'habit',       label: 'Habit',        icon: 'cached',          group: 'psychological' },
-    { id: 'restless',    label: 'Restless',     icon: 'directions_run',  group: 'psychological' },
+    { id: 'restless',    label: 'Restless',     icon: 'psychology_alt',  group: 'psychological' },
     { id: 'reward',      label: 'Reward',       icon: 'trophy',          group: 'psychological' },
     { id: 'sad',         label: 'Sad',          icon: 'sentiment_dissatisfied', group: 'psychological' },
-    { id: 'stress',      label: 'Stress',       icon: 'psychology_alt',  group: 'psychological' },
+    { id: 'stress',      label: 'Stress',       icon: 'sentiment_stressed', group: 'psychological' },
     // Social
     { id: 'gathering',   label: 'Gathering',    icon: 'nightlife',       group: 'social' },
-    { id: 'pressure',    label: 'Pressure',     icon: 'moving_ministry', group: 'social' },
+    { id: 'pressure',    label: 'Pressure',     icon: 'emoji_people', group: 'social' },
     { id: 'withsmokers', label: 'Smokers',      icon: 'diversity_3',     group: 'social' },
     // Situational
-    { id: 'activity',    label: 'Activity',     icon: 'emoji_people',    group: 'situational' },
+    { id: 'activity',    label: 'Activity',     icon: 'directions_run',  group: 'situational' },
     { id: 'afterwork',   label: 'After Work',   icon: 'moving_ministry', group: 'situational' },
     { id: 'commuting',   label: 'Commuting',    icon: 'train',           group: 'situational' },
     { id: 'driving',     label: 'Driving',      icon: 'directions_car',  group: 'situational' },
@@ -409,7 +409,7 @@ class CigLogTracker {
             this.currencyInput.disabled = false;
             this.timezoneInput.disabled = false;
             this._closeModal('settings');
-            this.createTodayTitle.textContent = `Get started!`;
+            this.createTodayTitle.innerHTML = `<span class="ms">rocket_launch</span> Getting started!`;
             this._openModal('createToday');
         } else {
             // Update price + custom triggers
@@ -421,7 +421,7 @@ class CigLogTracker {
             ].filter(t => t.length > 0);
             this.settings.customTriggers = custom;
             this._persist('settings');
-            this._toast('Settings saved ✓');
+            this._toast('Settings saved <span class="ms ms-fill" style="color: var(--green);">check_small</span>');
             this._closeModal('settings');
         }
     }
@@ -436,8 +436,8 @@ class CigLogTracker {
             this.currencyInput.disabled = true;
             this.timezoneInput.disabled = true;
             this.priceInput.disabled    = false;
-            this.settingsTitle.textContent = 'Settings';
-            document.getElementById('saveSettings').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save';
+            this.settingsTitle.innerHTML = '<span class="ms">settings</span> Settings';
+            document.getElementById('saveSettings').innerHTML = '<span class="ms">save</span> Save';
             this.closeSettingsBtn.style.display = 'block';
             // Show custom triggers + export/import sections
             this.customTriggerGroup.style.display  = 'flex';
@@ -453,7 +453,7 @@ class CigLogTracker {
             // First run — hide custom/export sections
             this.customTriggerGroup.style.display = 'none';
             this.exportImportGroup.style.display  = 'none';
-            document.getElementById('saveSettings').innerHTML = '<i class="fa-solid fa-play"></i> Start Tracking';
+            document.getElementById('saveSettings').innerHTML = '<span class="ms">play_arrow</span> Start Tracking';
             this.closeSettingsBtn.style.display = 'none';
         }
         this._openModal('settings');
@@ -614,7 +614,7 @@ class CigLogTracker {
             freqGrid.className = 'trigger-chip-grid';
             frequent.forEach(id => {
                 const t = TRIGGERS.find(t => t.id === id)
-                    || (custom.findIndex(c => c === id) !== -1 ? { id, label: id, icon: 'fa-solid fa-tag' } : null);
+                    || (custom.findIndex(c => c === id) !== -1 ? { id, label: id, icon: 'label' } : null);
                 if (t) freqGrid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
             });
             container.appendChild(freqLabel);
@@ -629,7 +629,7 @@ class CigLogTracker {
             const custGrid = document.createElement('div');
             custGrid.className = 'trigger-chip-grid';
             custom.forEach((label, i) => {
-                const t = { id: `custom_${i}`, label, icon: 'interests' };
+                const t = { id: `custom_${i}`, label, icon: 'label' };
                 custGrid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
             });
             container.appendChild(custLabel);
@@ -791,7 +791,7 @@ class CigLogTracker {
         this.saveCravingBtn.disabled = true;
         // Reset pending triggers
         this._pendingCravingTriggers = [];
-        this.cravingTriggerToggle.innerHTML = '<span class="ms">bolt</span> Add Trigger';
+        this.cravingTriggerToggle.innerHTML = '<span class="ms ms-fill">bolt</span> Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smartTimeDefaults, this.cravingHH, this.cravingMM,
                 () => this._updateSaveBtn('craving'));
@@ -832,7 +832,7 @@ class CigLogTracker {
         this.saveSmokeBtn.disabled = true;
         // Reset pending triggers
         this._pendingSmokeTriggers = [];
-        this.smokeTriggerToggle.innerHTML = '<span class="ms">bolt</span> Add Trigger';
+        this.smokeTriggerToggle.innerHTML = '<span class="ms ms-fill">bolt</span> Add Trigger';
         if (date === this._today()) {
             this._buildTimePresets(this.smokeTimeDefaults, this.smokeHH, this.smokeMM,
                 () => this._updateSaveBtn('smoke'));
@@ -949,7 +949,7 @@ class CigLogTracker {
 
     _openInfo(date) {
         this.activeDate = date;
-        this.infoTitle.innerHTML = `Timeline<br><span class="modal-subtitle">${date}</span>`;
+        this.infoTitle.innerHTML = `Info<br><span class="modal-subtitle">${date}</span>`;
         const entry = this._getEntry(date);
         if (!entry) { this._toast('Entry not found'); return; }
 
@@ -1004,7 +1004,7 @@ class CigLogTracker {
                 el.className = 'timeline-entry';
                 const indicator = ev.type === 'craving'
                     ? `<span class="timeline-intensity" style="background-color:${intensityColor[ev.intensity]}"></span>`
-                    : `<span class="timeline-skull"><span class="ms ms-fill" style="color:var(--amber);font-size:0.7rem;">square</span></span>`;
+                    : `<span class="timeline-square"><span class="ms ms-fill" style="color:var(--amber);font-size:0.7rem;">square</span></span>`;
                 const hasTriggers = ev.triggers && ev.triggers.length > 0;
                 const boltClass   = hasTriggers ? 'timeline-bolt has-triggers' : 'timeline-bolt';
                 const triggerNames = hasTriggers
@@ -1020,7 +1020,7 @@ class CigLogTracker {
                     <span class="timeline-time">${ev.time}</span>
                     <span class="timeline-emoji">${ev.type === 'craving' ? '<span class="ms">sentiment_frustrated</span>' : '<span class="ms">smoking_rooms</span>'}</span>
                     <span class="timeline-interval">${ev.interval}</span>
-                    <span class="${boltClass}" data-triggers="${triggerNames}"><span class="ms">bolt</span></span>
+                    <span class="${boltClass}" data-triggers="${triggerNames}"><span class="ms ms-fill">bolt</span></span>
                     ${indicator}`;
                 this.timelineContent.appendChild(el);
             });
@@ -1118,7 +1118,7 @@ class CigLogTracker {
                 <button class="edit-intensity-btn medium ${craving.intensity === 'medium' ? 'selected' : ''}" data-intensity="medium">M</button>
                 <button class="edit-intensity-btn high   ${craving.intensity === 'high'   ? 'selected' : ''}" data-intensity="high">H</button>
             </div>
-            <button type="button" class="edit-trigger-btn ${savedTriggers.length ? 'has-triggers' : ''}"><i class="fa-solid fa-bolt"></i></button>`;
+            <button type="button" class="edit-trigger-btn ${savedTriggers.length ? 'has-triggers' : ''}"><span class="ms ms-fill">bolt</span></button>`;
         const hhInput = el.querySelector('.edit-hh');
         const mmInput = el.querySelector('.edit-mm');
         this._bindTimeInputs(hhInput, mmInput, () => {});
@@ -1152,7 +1152,7 @@ class CigLogTracker {
                 <span class="count-separator">×</span>
                 <input type="number" class="edit-count" value="${smoke.count || 1}" min="1">
             </div>
-            <button type="button" class="edit-trigger-btn ${savedTriggers.length ? 'has-triggers' : ''}"><span class="ms">bolt</span></button>`;
+            <button type="button" class="edit-trigger-btn ${savedTriggers.length ? 'has-triggers' : ''}"><span class="ms ms-fill">bolt</span></button>`;
         const hhInput = el.querySelector('.edit-hh');
         const mmInput = el.querySelector('.edit-mm');
         this._bindTimeInputs(hhInput, mmInput, () => {});
@@ -1182,11 +1182,11 @@ class CigLogTracker {
         if (source === 'craving') {
             this._pendingCravingTriggers = selected;
             const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
-            this.cravingTriggerToggle.innerHTML = `<span class="ms">bolt</span> ${label}`;
+            this.cravingTriggerToggle.innerHTML = `<span class="ms ms-fill">bolt</span> ${label}`;
         } else if (source === 'smoke') {
             this._pendingSmokeTriggers = selected;
             const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
-            this.smokeTriggerToggle.innerHTML = `<span class="ms">bolt</span> ${label}`;
+            this.smokeTriggerToggle.innerHTML = `<span class="ms ms-fill">bolt</span> ${label}`;
         } else if (source && typeof source === 'object') {
             // Edit modal row element
             source.dataset.triggers = JSON.stringify(selected);
@@ -2030,6 +2030,12 @@ class CigLogTracker {
                 <ul>
                     <li>Font Awesome icons replaced with Google Material Icons.</li>                    
                 </ul>
+                <h4>Version 1.2.9 | 24-05-2026</h4>
+                <ul>
+                    <li>Material Icons fully fixed.</li>
+                    <li>Toast messages and Titles are now uniform.</li>
+                    <li>Minor fixes regarding leftover code and text formatting.</li>                    
+                </ul>
             </ul>
             <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
         `;
@@ -2039,7 +2045,7 @@ class CigLogTracker {
     // ── Toast & Confirm ───────────────────────────────────────────────────────
 
     _toast(msg, ms = 2200) {
-        this.toast.textContent = msg;
+        this.toast.innerHTML = msg;
         this.toast.style.display = 'block';
         this.toast.classList.add('visible');
         clearTimeout(this._toastTimer);
