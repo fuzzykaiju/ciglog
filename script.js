@@ -4,10 +4,10 @@
 
 const TRIGGERS = [
     // Physiological
-    { id: 'aftermeal',   label: 'After Meal',  icon: 'fork_spoon',      group: 'physiological' },
+    { id: 'aftermeal',   label: 'After Meal',  icon: 'lunch_dining',      group: 'physiological' },
     { id: 'alcohol',     label: 'Alcohol',      icon: 'local_bar',       group: 'physiological' },
     { id: 'coffee',      label: 'Coffee/Tea',   icon: 'emoji_food_beverage', group: 'physiological' },
-    { id: 'hunger',      label: 'Hunger',       icon: 'lunch_dining',    group: 'physiological' },
+    { id: 'hunger',      label: 'Hunger',       icon: 'fork_spoon',    group: 'physiological' },
     { id: 'morning',     label: 'Morning',      icon: 'sunny',        group: 'physiological' },
     { id: 'pain',        label: 'Pain',         icon: 'healing',         group: 'physiological' },
     { id: 'postsmoke',   label: 'Post-Smoke',   icon: 'smoking_rooms',   group: 'physiological' },
