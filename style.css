@@ -1898,9 +1898,9 @@ input[type="number"] {
     
     .date-year {
         font-size: 0.8rem;
-    }
+    }    
+}
 
-    .title-dot {
+.title-dot {
     color: var(--amber);      
-    }
 }
