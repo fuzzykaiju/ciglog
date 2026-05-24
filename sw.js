@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ciglog-v11';
+const CACHE_NAME = 'ciglog-v12';
 const ASSETS = [
   './index.html',
   './script.js',
@@ -6,6 +6,7 @@ const ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './readme-content.html',
   'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 
@@ -13,7 +14,7 @@ const ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(['./index.html', './script.js', './style.css', './manifest.json'])
+      return cache.addAll(ASSETS.filter(asset => typeof asset === 'string' && asset.startsWith('./')))
         .then(() => {
           return Promise.allSettled(
             ['https://cdn.jsdelivr.net/npm/chart.js'].map(url => cache.add(url).catch(() => {}))

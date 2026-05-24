@@ -170,6 +170,14 @@ class CigLogTracker {
         this.timerEl   = $('lastSmokedTimer');
         this.popoverEl = $('timerPopover');
         this._timerInterval = null;
+
+        // Persistent listener for closing trigger popovers
+        document.addEventListener('click', () => {
+            if (this._activeTriggerPopover) {
+                this._activeTriggerPopover.remove();
+                this._activeTriggerPopover = null;
+            }
+        });
     }
 
     _bindListeners() {
@@ -324,7 +332,7 @@ class CigLogTracker {
             if (this._confirmCb) this._confirmCb();
             this._closeModal('confirm');
         });
-        this.confirmCancel.addEventListener('click', () => this._closeModal('confirm'));
+        this.confirmCancel.onclick = () => this._closeModal('confirm');
 
         // Reset modal
         document.querySelector('.close-reset').addEventListener('click',  () => this._closeModal('reset'));
@@ -1057,13 +1065,7 @@ class CigLogTracker {
                     pop.style.left = `${Math.max(8, Math.min(boltRect.left + boltRect.width/2 - pop.offsetWidth/2, window.innerWidth - pop.offsetWidth - 8))}px`;
                     this._activeTriggerPopover = pop;
                 });
-            });
-            document.addEventListener('click', () => {
-                if (this._activeTriggerPopover) {
-                    this._activeTriggerPopover.remove();
-                    this._activeTriggerPopover = null;
-                }
-            });
+            });            
         }
         this.dayNotes.value = entry.notes || '';
         this._openModal('info');
@@ -1074,7 +1076,7 @@ class CigLogTracker {
         if (idx === -1) { this._toast('Error: entry not found'); return; }
         this.entries[idx].notes = this.dayNotes.value;
         this._persist('entries');
-        this._toast('Notes saved ✓');
+        this._toast('Notes saved <span class="ms ms-fill" style="color: var(--green);">check_small</span>');
     }
 
     // ── Edit-day modal ────────────────────────────────────────────────────────
@@ -1684,11 +1686,12 @@ class CigLogTracker {
             if (source === 'firstrun') {
                 this.entries = parsed;
                 this._persist('entries');
-                this._closeModal('createToday');
+                this._backfillSkippedDays();
                 this._ensureTodayExists();
+                this._closeModal('createToday');                
                 this._renderTable();
                 this._startTimer();
-                this._toast(`Imported ${parsed.length} days of data ✓`);
+                this._toast(`Imported ${parsed.length} days of data`);
                 // Reset file input
                 if (this.csvFileFirstRun) this.csvFileFirstRun.value = '';
                 return;
@@ -1698,10 +1701,12 @@ class CigLogTracker {
             const doImport = () => {
                 this.entries = parsed;
                 this._persist('entries');
+                this._backfillSkippedDays();
+                this._ensureTodayExists();
                 this._closeModal('settings');
                 this._renderTable();
                 this._startTimer();
-                this._toast(`Imported ${parsed.length} days of data ✓`);
+                this._toast(`Imported ${parsed.length} days of data`);
                 if (this.csvFileSettings) this.csvFileSettings.value = '';
             };
 
@@ -1715,14 +1720,12 @@ class CigLogTracker {
                     }
                 );
                 // Override confirm button temporarily to also offer export
-                this.confirmOk.textContent = 'Import Anyway';
-                // Add Export & Continue button logic via toast chain
-                const existingCb = this._confirmCb;
-                this._confirmCb = existingCb;
+                this.confirmOk.textContent = 'Import Anyway';                
                 // Offer export via a second confirm button swap
                 const exportAndContinue = () => {
                     this._exportCSV();
                     setTimeout(() => {
+                        this.confirmCancel.onclick = () => this._closeModal('confirm');
                         this._confirm(
                             'Backup Saved',
                             'Your backup has been downloaded. Proceed with import?',
@@ -1756,7 +1759,12 @@ class CigLogTracker {
     _closeModal(key) {
         this.modals[key].style.display = 'none';
         if (['addCraving', 'addSmoke', 'info', 'editDay'].includes(key)) this.activeDate = null;
-        if (key === 'confirm') this._confirmCb = null;
+        if (key === 'confirm') {
+            this._confirmCb = null;
+            this.confirmOk.textContent = 'Confirm';
+            this.confirmCancel.textContent = 'Cancel';
+            this.confirmCancel.onclick = () => this._closeModal('confirm');
+        }
         if (key === 'import')  this.csvFile.value = '';
     }
 
@@ -1903,143 +1911,20 @@ class CigLogTracker {
 
     _openReadme() {
         const body = document.getElementById('readmeBody');
-        body.innerHTML = `
-            <h3>CigLog - Cigarette Logger</h3>
-            <p>A data-driven PWA to help you log cigarettes craved and smoked, and get analytics for money spent and minutes of life lost.</p>
-
-            <h3><span class="ms">check_circle</span> Features</h3>
-            <ul>
-                <li>Daily log - cravings count, cigarettes smoked, money spent, minutes of life lost</li>
-                <li>Precise tracking - log each event with exact time</li>
-                <li>Craving intensity - low <span class="ms ms-fill" style="color:var(--low-intensity);">circle</span>, mid <span class="ms ms-fill" style="color:var(--medium-intensity);">circle</span>, high <span class="ms ms-fill" style="color:var(--high-intensity);">circle</span> for every craving</li>
-                <li>Smart time presets - "just now", "5m ago", "1hr ago"</li>
-                <li>Timeline view - all events of a day in chronological order</li>
-                <li>Notes - add personal notes to each day</li>
-                <li>Full edit mode - modify or delete any entry</li>
-                <li>Interactive charts - smoked, cravings, intensity, and life lost</li>
-                <li>CSV export / import - backup or analyse your data elsewhere</li>
-                <li>Auto-detected skipped days - with option to mark as clean</li>
-                <li>Installable - works offline, add to home screen</li>
-            </ul>
-
-            <h3><span class="ms">build_circle</span> How to Use</h3>
-            <ul>
-                <li>Tap <span class="ms">sentiment_frustrated</span> to log a craving with time &amp; intensity</li>
-                <li>Tap <span class="ms">smoking_rooms</span> to log a cigarette with time</li>
-                <li>Tap <span class="ms">keyboard_arrow_down</span> to see the day's timeline and add notes</li>
-                <li>Tap <span class="ms">more_vert</span> to edit or delete entries</li>
-                <li>Tap <span class="ms">warning</span> on skipped days for more actions</li>
-                <li>Open the side menu for charts, export/import, and settings</li>
-            </ul>
-
-            <h3><span class="ms">code_blocks</span> Tech Stack</h3>
-            <ul>
-                <li>Plain HTML, CSS, Vanilla JS — no frameworks</li>
-                <li>Chart.js for charts, Material Symbols for icons</li>
-                <li>Browser localStorage for data</li>
-                <li>Service Worker + Web App Manifest for offline &amp; installability</li>
-            </ul>
-
-            <h3><span class="ms">list_alt</span> Release Notes</h3>
-            <ul>
-                <h4>Version 1.1.0 | 09-05-2026</h4>
-                <ul>
-                    <li>Literature changes and corrections.</li>
-                </ul>
-                <h4>Version 1.1.1 | 09-05-2026</h4>
-                <ul>
-                    <li>Added new column in Homescreen - Minutes of Life Lost.</li>
-                    <li>Integration of Minutes of Life Lost in Charts and Status Bar.</li>
-                    <li>Minor text formatting.</li>
-                </ul>
-                <h4>Version 1.1.2 | 09-05-2026</h4>
-                <ul>
-                    <li>Smart money formatting - no redundant decimals.</li>
-                    <li>Smart MLL formatting - no leading zeros.</li>
-                    <li>Stats bar redesigned - equal 4-column grid layout.</li>
-                    <li>Cigarette count field now allows blank input; Save button disabled until valid.</li>
-                </ul>
-                <h4>Version 1.1.3 | 09-05-2026</h4>
-                <ul>
-                    <li>Added Google Font - Roboto Mono.</li>                    
-                </ul>
-                <h4>Version 1.2.0 | 11-05-2026</h4>
-                <ul>
-                    <li>New feature added - Triggers.</li>
-                    <li>Each craving or smoked entry can now have multiple triggers selected from a predefined list.</li>
-                    <li>Info & Notes modal now displays Trigger information.</li>
-                </ul>
-                <h4>Version 1.2.1 | 12-05-2026</h4>
-                <ul>
-                    <li>Import and Export Log moved from menu to Settings modal.</li>
-                    <li>Custom Triggers (up to 3) can now be added in Settings.</li>
-                    <li>First-run onboarding redesigned - option to Start Fresh or Load from a previous file.</li>
-                    <li>Import now validates data before replacing existing entries.</li>
-                    <li>Import safety flow - option to export a backup before overwriting data.</li>
-                    <li>Menu simplified - Chart, Settings, About, Read Me, Reset only.</li>
-                </ul>
-                <h4>Version 1.2.2 | 13-05-2026</h4>
-                <ul>
-                    <li>First-run Start Tracking button icon changed to play icon.</li>
-                    <li>Settings modal Custom Triggers section styled to match monochrome theme.</li>
-                    <li>Settings modal Save button bug fixed.</li>
-                    <li>Trigger category labels now centre aligned and no longer uppercase.</li>
-                    <li>Triggers reworked: Restless, Work Break, After Work icons updated; Watching TV replaced with Relaxing; Work trigger added.</li>
-                </ul>
-                <h4>Version 1.2.3 | 14-05-2026</h4>
-                <ul>
-                    <li>Hobby trigger added to Situational category.</li>
-                    <li>All triggers sorted alphabetically within categories.</li>
-                    <li>Edit modal trigger UI reworked - bolt icon button opens a dedicated trigger editing modal instead of expanding inline.</li>
-                    <li>Add Trigger button styled to match monochrome theme.</li>
-                    <li>CSV export now includes Triggers column.</li>
-                    <li>CSV import parses Triggers column; backwards compatible with older exports.</li>
-                </ul>
-                <h4>Version 1.2.4 | 16-05-2026</h4>
-                <ul>
-                    <li>New triggers added: Habit, Pain, Post-Smoke, Withdrawal, Reward.</li>
-                    <li>Add Trigger button in Add Craving and Log Cigarette modals now opens a dedicated modal instead of expanding inline.</li>
-                    <li>Trigger popover in Timeline now viewport-aware and no longer clips at modal edges.</li>
-                    <li>Get started modal buttons now stack vertically.</li>
-                    <li>Time preset buttons now display in 3-column grid on mobile.</li>                    
-                </ul>
-                <h4>Version 1.2.5 | 16-05-2026</h4>
-                <ul>
-                    <li>Time preset button labels shortened for mobile display.</li>
-                    <li>Add Trigger button text cleaned up - no plus symbol, no redundant emoji.</li>
-                    <li>Edit modal serial numbers removed for cleaner layout.</li>
-                    <li>Edit modal bolt icon overflow fixed.</li>
-                    <li>MLL column header changed to clock icon.</li>
-                    <li>Skull icon replaced with amber square in timeline.</li>                    
-                </ul>
-                <h4>Version 1.2.6 | 17-05-2026</h4>
-                <ul>
-                    <li>Amber square colour corrected in timeline.</li>
-                    <li>Trigger modal Confirm/Cancel buttons now sticky — always visible while scrolling chips.</li>
-                    <li>Button order standardised - Cancel left, primary action right throughout all modals.</li>                    
-                </ul>
-                <h4>Version 1.2.7 | 17-05-2026</h4>
-                <ul>
-                    <li>Pain icon updated to bandage.</li>
-                    <li>Habit moved from Physiological to Psychological category.</li>
-                    <li>Lonely renamed to Alone.</li>
-                    <li>Exercise renamed to Activity.</li>
-                    <li>Focus trigger added to Situational category.</li>
-                </ul>
-                <h4>Version 1.2.8 | 23-05-2026</h4>
-                <ul>
-                    <li>Font Awesome icons replaced with Google Material Icons.</li>                    
-                </ul>
-                <h4>Version 1.2.9 | 24-05-2026</h4>
-                <ul>
-                    <li>Material Icons fully fixed.</li>
-                    <li>Toast messages and Titles are now uniform.</li>
-                    <li>Minor fixes regarding leftover code and text formatting.</li>                    
-                </ul>
-            </ul>
-            <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
-        `;
-        this._openModal('readme');
+        fetch('./readme-content.html')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(html => {
+                body.innerHTML = html;
+                this._openModal('readme');
+            })
+            .catch(err => {
+                console.warn('Failed to load README content:', err);
+                body.innerHTML = '<p>Error loading README content.</p>';
+                this._openModal('readme');
+            });
     }
 
     // ── Toast & Confirm ───────────────────────────────────────────────────────
