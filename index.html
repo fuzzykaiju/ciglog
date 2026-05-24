@@ -373,18 +373,24 @@
                 <button class="close-btn close-about"><span class="ms">close</span></button>
             </div>
             <div class="modal-body about-body">
-                <p>CigLog is a cigarette craving &amp; smoking logger. Log your daily cigarettes craved and smoked, and get analytics for your money spent and minutes of life lost.<br>Log immediately &amp; honestly - CigLog transforms entries into analytics, charts, &amp; timelines to help you spot patterns across various time ranges.</p>
-                <h3>How to use:</h3>
+                <p><strong>CigLog</strong><br>Version: 1.2.11<br>Build date: 2026-05-24</p>
+                <p>Service worker cache: <code>ciglog-v13</code><br>Storage schema: <code>ciglog_v1</code></p>
+
+                <h3><span class="ms">extension</span> Dependencies</h3>
                 <ul>
-                    <li>Tap <span class="ms">sentiment_frustrated</span> to log a craving with time &amp; intensity</li>
-                    <li>Tap <span class="ms">smoking_rooms</span> to log a cigarette with time</li>
-                    <li>Tap <span class="ms">keyboard_arrow_down</span> to see the day's timeline and add notes</li>
-                    <li>Tap <span class="ms">more_vert</span> to edit or delete entries</li>
-                    <li>Tap <span class="ms">warning</span> on skipped days for more actions</li>
-                    <li>Use the side menu for charts, export/import, and settings</li>
+                    <li>Chart.js: <span id="chartVersion">loading...</span></li>
+                    <li>Material Symbols: Google Fonts (Rounded)</li>
+                    <li>Roboto Mono: Google Fonts</li>
                 </ul>
-                <p class="motivation">"Log smokes and cravings - CigLog shows the toll."</p>
-                <div class="version">Version 1.2.10 | 24-05-2026</div>
+
+                <h3><span class="ms">desktop_windows</span> Runtime</h3>
+                <ul>
+                    <li>User agent: <span id="userAgent"></span></li>
+                    <li>LocalStorage: <span id="storageStatus">available</span></li>
+                    <li>Service worker: <span id="swStatus">checking...</span></li>
+                </ul>
+    
+                <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
             </div>
         </div>
     </div>

@@ -191,8 +191,26 @@ class CigLogTracker {
             () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderActiveTab(), 100); });
         document.getElementById('settingsMenuBtn').addEventListener('click',
             () => this._openSettings());
-        document.getElementById('aboutBtn').addEventListener('click',
-            () => { this._closeMenu(); this._openModal('about'); });
+        document.getElementById('aboutBtn').addEventListener('click', () => {
+            // Populate Chart.js version
+            const chartVerSpan = document.getElementById('chartVersion');
+            if (window.Chart && window.Chart.version) {
+                chartVerSpan.textContent = window.Chart.version;
+            } else {
+                chartVerSpan.textContent = 'unknown';
+            }
+            // User agent
+            document.getElementById('userAgent').textContent = navigator.userAgent;
+            // Service worker status
+            const swStatusSpan = document.getElementById('swStatus');
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                swStatusSpan.textContent = 'active';
+            } else {
+                swStatusSpan.textContent = 'not active';
+            }
+            this._closeMenu();
+            this._openModal('about');
+        });
         document.getElementById('readmeBtn').addEventListener('click',
             () => { this._closeMenu(); this._openReadme(); });
         document.getElementById('resetBtn').addEventListener('click',

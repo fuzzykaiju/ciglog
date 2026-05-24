@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ciglog-v12';
+const CACHE_NAME = 'ciglog-v13';
 const ASSETS = [
   './index.html',
   './script.js',
