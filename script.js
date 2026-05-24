@@ -1323,7 +1323,7 @@ class CigLogTracker {
             this.entries[entryIdx].skipped = false;
         }
         this._persist('entries');
-        this._toast('Changes saved ✓');
+        this._toast('Changes saved <span class="ms ms-fill" style="color: var(--green);">check_small</span>');
         this._closeModal('editDay');
         this._renderTable();
         this._startTimer();
