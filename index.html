@@ -47,6 +47,19 @@
         </div>
     </main>
 
+    <!-- Analytics View -->
+    <div id="analyticsView" class="analytics-view" style="display:none;">
+        <div class="analytics-header">
+            <button id="backToTableBtn" class="back-btn" aria-label="Back to table">
+                <span class="ms">arrow_back</span>
+            </button>
+            <h2><span class="ms">analytics</span> Analytics</h2>
+        </div>
+        <div class="analytics-content" id="analyticsContent">
+            <!-- Populated by _renderAnalytics() -->
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -288,6 +301,10 @@
                 <span class="menu-icon"><span class="ms">chart_data</span></span>
                 <span>Charts</span>
             </button>
+            <button id="analyticsBtn" class="menu-item">
+                <span class="menu-icon"><span class="ms">analytics</span></span>
+                <span>Analytics</span>
+            </button>
             <button id="settingsMenuBtn" class="menu-item">
                 <span class="menu-icon"><span class="ms">settings</span></span>
                 <span>Settings</span>
@@ -373,8 +390,8 @@
                 <button class="close-btn close-about"><span class="ms">close</span></button>
             </div>
             <div class="modal-body about-body">
-                <p><strong>CigLog</strong><br>Version: 1.2.11<br>Build date: 2026-05-24</p>
-                <p>Service worker cache: <code>ciglog-v13</code><br>Storage schema: <code>ciglog_v1</code></p>
+                <p><strong>CigLog</strong><br>Version: 1.3.0<br>Build date: 2026-05-24</p>
+                <p>Service worker cache: <code>ciglog-v15</code><br>Storage schema: <code>ciglog_v1</code></p>
 
                 <h3><span class="ms">extension</span> Dependencies</h3>
                 <ul>

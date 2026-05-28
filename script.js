@@ -189,6 +189,8 @@ class CigLogTracker {
         // Menu items
         document.getElementById('chartBtn').addEventListener('click',
             () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderActiveTab(), 100); });
+        document.getElementById('analyticsBtn').addEventListener('click',
+            () => { this._closeMenu(); this._showAnalyticsView(); });
         document.getElementById('settingsMenuBtn').addEventListener('click',
             () => this._openSettings());
         document.getElementById('aboutBtn').addEventListener('click', () => {
@@ -1975,6 +1977,751 @@ class CigLogTracker {
         if (what === 'settings' || what === 'all')
             localStorage.setItem('ciglog_v1_settings', JSON.stringify(this.settings));
     }
+
+    // ── Analytics View ────────────────────────────────────────────────────────
+
+    _showAnalyticsView() {
+        document.querySelector('.main-content').style.display = 'none';
+        document.getElementById('analyticsView').style.display = 'flex';
+        document.body.classList.add('analytics-active');
+        // Preserve period across re-renders; default 30 on first open
+        if (!this._analyticsPeriod) this._analyticsPeriod = 30;
+        if (this._calMonth === undefined) {
+            this._calMonth = new Date().getMonth();
+            this._calYear  = new Date().getFullYear();
+        }
+        this._renderAnalytics();
+
+        // Back button
+        document.getElementById('backToTableBtn').onclick = () => this._showMainTableView();
+    }
+
+    _showMainTableView() {
+        document.getElementById('analyticsView').style.display = 'none';
+        document.querySelector('.main-content').style.display = 'block';
+        document.body.classList.remove('analytics-active');
+        // Destroy analytics chart if it exists
+        if (this._analyticsChart) {
+            this._analyticsChart.destroy();
+            this._analyticsChart = null;
+        }
+    }
+
+    _getAnalyticsPeriodEntries() {
+        const days   = this._analyticsPeriod || 30;
+        const now    = new Date();
+        const cutoff = new Date(now);
+        cutoff.setDate(cutoff.getDate() - days);
+        cutoff.setHours(0,0,0,0);
+        return this.entries
+            .filter(e => { const d = this._toDate(e.date); return d >= cutoff && d <= now; })
+            .sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+    }
+
+    // ── Data helpers ──────────────────────────────────────────────────────────
+
+    _computeTriggerStats(entries, minCount = 5) {
+        const stats = {}; // id → { cravings, smoked }
+
+        const allTriggerIds = () => {
+            const ids = new Set();
+            entries.forEach(e => {
+                [...e.cravings, ...e.smoked].forEach(ev =>
+                    (ev.triggers || []).forEach(id => ids.add(id))
+                );
+            });
+            return [...ids];
+        };
+
+        allTriggerIds().forEach(id => { stats[id] = { cravings: 0, smoked: 0 }; });
+
+        entries.forEach(e => {
+            e.cravings.forEach(c => (c.triggers || []).forEach(id => {
+                if (stats[id]) stats[id].cravings++;
+            }));
+            e.smoked.forEach(s => (s.triggers || []).forEach(id => {
+                if (stats[id]) stats[id].smoked++;
+            }));
+        });
+
+        return Object.entries(stats)
+            .map(([id, { cravings, smoked }]) => {
+                const total = cravings + smoked;
+                return { id, cravings, smoked, total, rate: total ? smoked / total : 0 };
+            })
+            .filter(t => t.total >= minCount)
+            .sort((a, b) => b.rate - a.rate);
+    }
+
+    _computeTriggerPairStats(entries, minCount = 5) {
+        const pairs = {}; // "id1|id2" → { cravings, smoked }
+
+        const addPairs = (evList, type) => {
+            evList.forEach(ev => {
+                const triggers = (ev.triggers || []).slice().sort();
+                for (let i = 0; i < triggers.length; i++) {
+                    for (let j = i + 1; j < triggers.length; j++) {
+                        const key = `${triggers[i]}|${triggers[j]}`;
+                        if (!pairs[key]) pairs[key] = { cravings: 0, smoked: 0 };
+                        pairs[key][type]++;
+                    }
+                }
+            });
+        };
+
+        entries.forEach(e => {
+            addPairs(e.cravings, 'cravings');
+            addPairs(e.smoked,   'smoked');
+        });
+
+        return Object.entries(pairs)
+            .map(([key, { cravings, smoked }]) => {
+                const [idA, idB] = key.split('|');
+                const total = cravings + smoked;
+                return { idA, idB, cravings, smoked, total, rate: total ? smoked / total : 0 };
+            })
+            .filter(p => p.total >= minCount)
+            .sort((a, b) => b.rate - a.rate)
+            .slice(0, 3);
+    }
+
+    _computeConversionRate(entries) {
+        const totalCravings   = entries.reduce((s, e) => s + e.cravings.length, 0);
+        const totalSmokedCigs = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        // Conversion = cigarettes smoked / cravings logged
+        // Clamped to 100% in case user logs smokes without cravings
+        const rate = totalCravings > 0
+            ? Math.min(1, totalSmokedCigs / totalCravings) : 0;
+        return {
+            cravings: totalCravings,
+            smoked:   totalSmokedCigs,
+            total:    totalCravings + totalSmokedCigs,
+            noData:   totalCravings === 0 && totalSmokedCigs === 0,
+            rate,
+        };
+    }
+
+    _computeResistanceStreak(entries) {
+        // Flatten all events chronologically; increment streak on craving, reset on any smoked entry
+        const allEvents = [];
+        entries.forEach(e => {
+            e.cravings.forEach(c => {
+                const [d, m, y] = e.date.split('-').map(Number);
+                const [hh, mm]  = c.time.split(':').map(Number);
+                allEvents.push({ dt: new Date(2000+y, m-1, d, hh, mm), type: 'craving' });
+            });
+            e.smoked.forEach(s => {
+                const [d, m, y] = e.date.split('-').map(Number);
+                const [hh, mm]  = s.time.split(':').map(Number);
+                allEvents.push({ dt: new Date(2000+y, m-1, d, hh, mm), type: 'smoked' });
+            });
+        });
+        allEvents.sort((a, b) => a.dt - b.dt);
+
+        let current = 0, longest = 0;
+        allEvents.forEach(ev => {
+            if (ev.type === 'craving') {
+                current++;
+                if (current > longest) longest = current;
+            } else {
+                current = 0;
+            }
+        });
+        return longest;
+    }
+
+    _computeTimeOfDay(entries) {
+        // 2-hour bins: index 0 = midnight–2am, 11 = 10pm–midnight
+        const cravings = new Array(12).fill(0);
+        const smoked   = new Array(12).fill(0);
+        entries.forEach(e => {
+            e.cravings.forEach(c => { cravings[Math.floor(parseInt(c.time.split(':')[0]) / 2)]++; });
+            e.smoked.forEach(s   => { smoked[Math.floor(parseInt(s.time.split(':')[0]) / 2)]++;   });
+        });
+        return { cravings, smoked };
+    }
+
+    _todBinLabels() {
+        return ['12–2a','2–4a','4–6a','6–8a','8–10a','10a–12p',
+                '12–2p','2–4p','4–6p','6–8p','8–10p','10p–12a'];
+    }
+
+    _triggerLabel(id) {
+        const preset = TRIGGERS.find(t => t.id === id);
+        if (preset) return { label: preset.label, icon: preset.icon };
+        const custom = (this.settings.customTriggers || []);
+        const ci = parseInt(id.replace('custom_', ''));
+        return { label: custom[ci] || id, icon: 'label' };
+    }
+
+    // ── Insight sentences ─────────────────────────────────────────────────────
+
+    _generateInsightSentences(entries, triggerStats, convData) {
+        const sentences = [];
+
+        // 1. Most dangerous trigger
+        if (triggerStats.length > 0) {
+            const top = triggerStats[0];
+            const { label } = this._triggerLabel(top.id);
+            sentences.push(`${label} cravings lead to smoking ${Math.round(top.rate * 100)}% of the time.`);
+        }
+
+        // 2. Best-resisted trigger (lowest rate, still ≥5 events)
+        if (triggerStats.length > 1) {
+            const best = triggerStats[triggerStats.length - 1];
+            const { label } = this._triggerLabel(best.id);
+            sentences.push(`You resist ${label} cravings most successfully (${Math.round((1 - best.rate) * 100)}% resistance).`);
+        }
+
+        // 3. Peak bin
+        const tod = this._computeTimeOfDay(entries);
+        const binLabels = this._todBinLabels();
+        const peakBin = tod.smoked.indexOf(Math.max(...tod.smoked));
+        if (Math.max(...tod.smoked) > 0) {
+            sentences.push(`Most smoking occurs between ${binLabels[peakBin]}.`);
+        }
+
+        // 4. Overall resistance
+        if (convData.total > 0) {
+            const resistance = Math.round((1 - convData.rate) * 100);
+            if (resistance >= 50) {
+                sentences.push(`You resist ${resistance}% of all cravings — keep it up.`);
+            }
+        }
+
+        return sentences;
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+
+    _renderAnalytics() {
+        const content = document.getElementById('analyticsContent');
+        const entries = this._getAnalyticsPeriodEntries();
+        content.innerHTML = '';
+
+        if (!entries.length) {
+            content.innerHTML = '<p class="analytics-empty" style="margin-top:40px;">No data in this period. Start logging to see analytics.</p>';
+            return;
+        }
+
+        const convData     = this._computeConversionRate(entries);
+        const triggerStats = this._computeTriggerStats(entries, 5);
+        const pairStats    = this._computeTriggerPairStats(entries, 5);
+        const sentences    = this._generateInsightSentences(entries, triggerStats, convData);
+
+        // Global low-data notice
+        const totalEvents = entries.reduce((s, e) => s + e.cravings.length + e.smoked.length, 0);
+        if (totalEvents < 30) {
+            const notice = document.createElement('div');
+            notice.className = 'analytics-data-notice';
+            notice.innerHTML = `<span class="ms">info</span> Insights become more accurate after ~30 events logged. You have ${totalEvents} so far.`;
+            content.appendChild(notice);
+        }
+
+        // ── 1. Weekly summary (with delta comparison) ─────────────────────────
+        // Normalize to midnight to avoid time-of-day boundary drift
+        // last7  = today and the 6 days before it (7 days total, inclusive)
+        // prev7  = the 7 days before that (days 8–14 ago)
+        const todayMidnight = new Date(); todayMidnight.setHours(23,59,59,999);
+        const d7  = new Date(); d7.setDate(d7.getDate() - 6);   d7.setHours(0,0,0,0);
+        const d14 = new Date(); d14.setDate(d14.getDate() - 13); d14.setHours(0,0,0,0);
+
+        const last7 = this.entries.filter(e => {
+            const d = this._toDate(e.date);
+            return d >= d7 && d <= todayMidnight;
+        });
+        const prev7 = this.entries.filter(e => {
+            const d = this._toDate(e.date);
+            return d >= d14 && d < d7;
+        });
+
+        const w7Smoked       = last7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const w7Cravings     = last7.reduce((s, e) => s + e.cravings.length, 0);
+        // Use cigarette COUNT (not entry count) so logging 3 cigs in one entry counts as 3
+        const w7Resisted     = Math.max(0, w7Cravings - w7Smoked);
+        // Resistance rate = resisted / total cravings
+        const w7ResRate      = w7Cravings > 0
+            ? Math.round((w7Resisted / w7Cravings) * 100) : null;
+        const w7Streak       = this._computeResistanceStreak(last7);
+        const w7Money        = last7.reduce((s, e) => s + e.smoked.reduce((x, y) =>
+            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        const w7MLL          = w7Smoked * 20;
+
+        // Previous 7 days
+        const p7Smoked       = prev7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const p7Cravings     = prev7.reduce((s, e) => s + e.cravings.length, 0);
+        const p7Resisted     = Math.max(0, p7Cravings - p7Smoked);
+        const p7ResRate      = p7Cravings > 0
+            ? Math.round((p7Resisted / p7Cravings) * 100) : null;
+        const hasPrevData    = prev7.length > 0 && (p7Smoked + p7Cravings) > 0;
+
+        // Delta helper — returns bracket HTML or empty string
+        const _delta = (curr, prev, lowerIsBetter = true) => {
+            if (!hasPrevData) return '';
+            if (prev === 0 && curr > 0) return ' <span class="weekly-delta-bracket">[</span><span class="weekly-delta new">new</span><span class="weekly-delta-bracket">]</span>';
+            if (prev === 0) return '';
+            const pct = Math.round(((curr - prev) / prev) * 100);
+            if (pct === 0) return '';
+            const arrow = pct < 0 ? '↓' : '↑';
+            // lowerIsBetter: decrease = good (green), increase = bad (red)
+            const isGood = lowerIsBetter ? pct < 0 : pct > 0;
+            const cls = isGood ? 'delta-green' : 'delta-red';
+            return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
+        };
+
+        // Resistance rate delta — relative % change, higher is better
+        const resRateDelta = (() => {
+            if (!hasPrevData || w7ResRate === null || p7ResRate === null || p7ResRate === 0) return '';
+            const pct = Math.round(((w7ResRate - p7ResRate) / p7ResRate) * 100);
+            if (pct === 0) return '';
+            const arrow = pct > 0 ? '↑' : '↓';
+            const cls   = pct > 0 ? 'delta-green' : 'delta-red';
+            return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
+        })();
+
+        // Trigger labels (min 3 for 7-day window) — tie-aware
+        const w7TrigStats = this._computeTriggerStats(last7, 3);
+        const w7Freq      = this._computeTriggerStats(last7, 1).sort((a, b) => b.total - a.total);
+
+        // Helper: given sorted stats array and key to compare, return up to 2 tied labels
+        const _tiedLabels = (stats, key) => {
+            if (!stats.length) return null;
+            const topVal = stats[0][key];
+            const tied   = stats
+                .filter(t => t[key] === topVal)
+                .map(t => this._triggerLabel(t.id).label)
+                .sort((a, b) => a.localeCompare(b))
+                .slice(0, 2);
+            return tied.join(' & ');
+        };
+
+        const topFreqLabel    = w7Freq.length     ? _tiedLabels(w7Freq,      'total') : null;
+        const strongestLabel  = w7TrigStats.length ? _tiedLabels(w7TrigStats, 'rate')  : null;
+
+        // Helper: given sorted stats array and key, return up to 2 tied {icon, label} objects
+        const _tiedEntries = (stats, key) => {
+            if (!stats.length) return [];
+            const topVal = stats[0][key];
+            return stats
+                .filter(t => t[key] === topVal)
+                .map(t => this._triggerLabel(t.id))
+                .sort((a, b) => a.label.localeCompare(b.label))
+                .slice(0, 2);
+        };
+
+        const topFreqEntries   = w7Freq.length     ? _tiedEntries(w7Freq,      'total') : [];
+        const strongestEntries = w7TrigStats.length ? _tiedEntries(w7TrigStats, 'rate')  : [];
+
+        const _renderTriggerValue = (entries) => {
+            if (!entries.length) return '<span class="weekly-trigger-value muted">—</span>';
+            return entries.map(e =>
+                `<span class="weekly-trigger-entry"><span class="ms weekly-trigger-icon">${e.icon}</span><span class="weekly-trigger-value">${e.label}</span></span>`
+            ).join('');
+        };        
+
+        // Money + Time Lost for previous period (for delta)
+        const p7Money = prev7.reduce((s, e) => s + e.smoked.reduce((x, y) =>
+            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        const p7MLL   = p7Smoked * 20;
+
+        // Display values — show — when no data this week
+        const resistedDisplay   = w7Cravings === 0 ? '—' : String(w7Resisted);
+        const resRateDisplay    = w7ResRate === null ? '—' : `${w7ResRate}%`;
+
+        const weeklyBody = `
+            <div class="weekly-grid">
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Cigarettes Smoked</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${w7Smoked}</span>${w7Smoked === 0 ? '' : _delta(w7Smoked, p7Smoked, true)}
+                    </div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Cravings</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${w7Cravings}</span>${w7Cravings === 0 ? '' : _delta(w7Cravings, p7Cravings, true)}
+                    </div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Resisted</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${resistedDisplay}</span>${w7Cravings === 0 ? '' : _delta(w7Resisted, p7Resisted, false)}
+                    </div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Resistance Rate</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${resRateDisplay}</span>${w7Cravings === 0 ? '' : resRateDelta}
+                    </div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Money Spent</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${this.settings.currency}${parseFloat(w7Money.toFixed(2))}</span>${w7Smoked === 0 ? '' : _delta(w7Money, p7Money, true)}
+                    </div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Time Lost</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${this._fmtMLL(w7MLL)}</span>${w7Smoked === 0 ? '' : _delta(w7MLL, p7MLL, true)}
+                    </div>
+                </div>
+                <div class="weekly-stat weekly-stat-full">
+                    <div class="weekly-stat-label">Longest Resistance Streak</div>
+                    <div class="weekly-stat-value">${w7Streak} cravings</div>
+                </div>
+            </div>
+            <div class="weekly-triggers-card">
+                <div class="weekly-trigger-row">
+                    <div class="weekly-trigger-left">
+                        <span class="weekly-trigger-label">Most Common Trigger</span>
+                        <span class="weekly-trigger-sublabel">Logged most often</span>
+                    </div>
+                    <div class="weekly-trigger-right">
+                        ${_renderTriggerValue(topFreqEntries)}
+                    </div>
+                </div>
+                <div class="weekly-trigger-divider"></div>
+                <div class="weekly-trigger-row">
+                    <div class="weekly-trigger-left">
+                        <span class="weekly-trigger-label">Strongest Trigger</span>
+                        <span class="weekly-trigger-sublabel">Most likely to lead to smoking</span>
+                    </div>
+                    <div class="weekly-trigger-right">
+                        ${_renderTriggerValue(strongestEntries)}
+                    </div>
+                </div>
+            </div>`;
+        content.appendChild(this._makeSection('date_range', 'Week in Review', null, weeklyBody,
+            'Your weekly summary compared to the previous 7-day period.'));
+
+        // ── Monthly Calendar ──────────────────────────────────────────────────────
+        const calMonthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
+            .format(new Date(this._calYear, this._calMonth));
+
+        content.appendChild(this._makeSection('calendar_view_month', 'Monthly Calendar', null, `
+            <div class="cal-nav">
+                <button id="calPrev" class="cal-nav-btn"><span class="ms">keyboard_arrow_left</span></button>
+                <span id="calMonthLabel" class="pattern-month-label">${calMonthLabel}</span>
+                <button id="calNext" class="cal-nav-btn"><span class="ms">keyboard_arrow_right</span></button>
+            </div>
+            <div class="cal-day-headers">
+                <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+            </div>
+            <div id="calGrid" class="cal-grid"></div>
+        `, 'Days with logged smoking activity are highlighted.'));
+
+        this._renderMonthlyCalendar();
+
+        // ── Deep Dive divider + period selector ───────────────────────────────
+        const deepDive = document.createElement('div');
+        deepDive.className = 'analytics-deep-dive-header';
+        deepDive.innerHTML = `
+            <div class="deep-dive-title">Deep Dive</div>
+            <div class="deep-dive-period">
+                <span class="deep-dive-label">Period:</span>
+                <select id="analyticsTimeRange" class="time-select analytics-time-select-inline">
+                    <option value="7">Past 1 Week</option>
+                    <option value="30">Past 1 Month</option>
+                    <option value="90">Past 3 Months</option>
+                    <option value="180">Past 6 Months</option>
+                    <option value="365">Past 1 Year</option>
+                    <option value="730">Past 2 Years</option>
+                </select>
+            </div>`;
+        content.appendChild(deepDive);
+
+        // Restore persisted selection, then bind change
+        const sel = deepDive.querySelector('#analyticsTimeRange');
+        sel.value = String(this._analyticsPeriod || 30);
+        sel.addEventListener('change', () => {
+            this._analyticsPeriod = parseInt(sel.value);
+            this._renderAnalytics();
+        });
+
+        // ── 2. Conversion rate ────────────────────────────────────────────────
+        const convPct = Math.round(convData.rate * 100);
+        content.appendChild(this._makeSection('compare_arrows', 'Craving Outcomes', null,
+            convData.noData
+            ? '<p class="analytics-empty">No cravings or smoked entries in this period.</p>'
+            : `
+            <div class="conversion-gauge-wrap">
+                <div class="conversion-rate-value">${convPct}%</div>
+                <div class="conversion-rate-label">of cravings led to smoking</div>
+                <div class="conversion-bar-track">
+                    <div class="conversion-bar-fill" style="width:${convPct}%"></div>
+                </div>
+                <div class="conversion-meta">
+                    <span><strong>${convData.smoked}</strong>Smoked</span>
+                    <span><strong>${convData.cravings}</strong>Craved</span>
+                </div>
+            </div>
+        `, 'Overall percentage of cravings that led to smoking in the selected period.'
+        ));
+
+        // ── 3. Insights ───────────────────────────────────────────────────────
+        let insightBody;
+        if (!sentences.length) {
+            insightBody = '<p class="analytics-empty">Keep logging to see behavioural insights.</p>';
+        } else {
+            const [featured, ...secondary] = sentences;
+            const featuredHtml = `
+                <div class="insight-item insight-featured">
+                    <span>${featured}</span>
+                </div>`;
+            const secondaryHtml = secondary.map(s => `
+                <div class="insight-item insight-secondary">
+                    <span>${s}</span>
+                </div>`).join('');
+            insightBody = `<div class="insight-list">${featuredHtml}${secondaryHtml}</div>`;
+        }
+        content.appendChild(this._makeSection('lightbulb_2', 'Insights', null, insightBody, 'Behavioral insights based on your data in this period.'));
+
+        // ── 4. Trigger rankings (no bars — ranked text list) ──────────────────
+        let triggerBody;
+        if (!triggerStats.length) {
+            triggerBody = '<p class="analytics-empty">Not enough data yet — need at least 5 events per trigger. Keep logging to see rankings.</p>';
+        } else {
+            const items = triggerStats.map((t, i) => {
+                const { label, icon } = this._triggerLabel(t.id);
+                const pct = Math.round(t.rate * 100);
+                const passed = t.total - t.smoked;
+                return `
+                    <div class="trigger-rank-item">
+                        <span class="ms trigger-rank-icon">${icon}</span>
+                        <span class="trigger-rank-name">${label}</span>
+                        <span class="trigger-rank-fraction">${pct}%</span>
+                        <span class="trigger-rank-pct-small">${t.total} logged · ${t.smoked} smoked · ${passed} passed</span>
+                    </div>`;
+            }).join('');
+            triggerBody = `<div class="trigger-rank-list">${items}</div>`;
+        }
+        content.appendChild(this._makeSection('equalizer', 'Trigger Rankings',
+            null, triggerBody, 'Triggers ranked by how often they lead to smoking. Minimum 5 logged events per trigger.'));
+
+        // ── 5. Trigger pairs ──────────────────────────────────────────────────
+        let pairBody;
+        if (!pairStats.length) {
+            pairBody = '<p class="analytics-empty">Need at least 5 events per trigger pair. Log entries with multiple triggers to unlock this section.</p>';
+        } else {
+            const items = pairStats.map(p => {
+                const a = this._triggerLabel(p.idA).label;
+                const b = this._triggerLabel(p.idB).label;
+                return `
+                    <div class="trigger-pair-item">
+                        <div class="trigger-pair-name">${a} + ${b}</div>
+                        <div class="trigger-pair-meta">
+                            <span class="trigger-pair-pct">${Math.round(p.rate * 100)}% smoking rate</span>
+                            &nbsp;·&nbsp;
+                            <span class="trigger-pair-fraction">${p.smoked} / ${p.total} events</span>
+                        </div>
+                    </div>`;
+            }).join('');
+            pairBody = `<div class="trigger-pair-list">${items}</div>`;
+        }
+        content.appendChild(this._makeSection('join', 'Trigger Combinations', null, pairBody, 'Trigger pairs that frequently appear together. Minimum 5 combined events.'));
+
+        // ── 6. Time of day ────────────────────────────────────────────────────
+        content.appendChild(this._makeSection('schedule', 'Time of Day',
+            null, `
+            <div class="analytics-chart-container">
+                <canvas id="analyticsTimeOfDayChart"></canvas>
+            </div>
+        `, 'Cravings and smoking frequency by time of day, in 2-hour bins.'
+        ));
+
+        requestAnimationFrame(() => {
+            if (this._analyticsChart) { this._analyticsChart.destroy(); this._analyticsChart = null; }
+            const tod = this._computeTimeOfDay(entries);
+            const st  = this._chartStyle();
+            this._analyticsChart = new Chart(
+                document.getElementById('analyticsTimeOfDayChart').getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: this._todBinLabels(),
+                        datasets: [
+                            {
+                                label: 'Cravings',
+                                data: tod.cravings,
+                                backgroundColor: '#A6A6A6',
+                                borderColor: '#A6A6A6',
+                                borderWidth: 1,
+                                borderRadius: 3,
+                                barPercentage: 0.8,
+                            },
+                            {
+                                label: 'Smoked',
+                                data: tod.smoked,
+                                backgroundColor: '#F1976D',
+                                borderColor: '#F1976D',
+                                borderWidth: 1,
+                                borderRadius: 3,
+                                barPercentage: 0.8,
+                            },
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: { color: st.textPrimary, font: { family: st.font, size: 10 }, boxWidth: 10, padding: 8 },
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(26,26,26,0.95)',
+                                titleColor: st.textPrimary,
+                                bodyColor: st.textPrimary,
+                                borderColor: 'rgba(217,217,217,0.25)',
+                                borderWidth: 1,
+                                cornerRadius: 6,
+                            },
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: st.gridColor },
+                                ticks: { color: st.textSecond, maxRotation: 0, font: { family: st.font, size: 9 } },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: st.gridColor },
+                                ticks: { stepSize: 1, color: st.textSecond, font: { family: st.font, size: 10 } },
+                            },
+                        },
+                        animation: { duration: 400, easing: 'easeOutQuart' },
+                    },
+                }
+            );
+        });
+    }
+
+    _renderMonthlyCalendar() {
+        const now   = new Date();
+        const month = this._calMonth;
+        const year  = this._calYear;
+
+        const nextBtn = document.getElementById('calNext');
+        const prevBtn = document.getElementById('calPrev');
+        if (nextBtn) {
+            nextBtn.disabled = (year === now.getFullYear() && month === now.getMonth());
+            nextBtn.style.opacity = nextBtn.disabled ? '0.3' : '1';
+        }
+
+        // First entry date
+        const sortedEntries = [...this.entries].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+        const firstEntryDate = sortedEntries.length ? this._toDate(sortedEntries[0].date) : now;
+
+        // Build a set of dates that have smoked entries
+        const smokedDates = new Set();
+        this.entries.forEach(e => {
+            if (e.smoked.reduce((s, x) => s + x.count, 0) > 0) smokedDates.add(e.date);
+        });
+
+        const firstDay = new Date(year, month, 1);
+        const lastDay  = new Date(year, month + 1, 0);
+        const today    = new Date(); today.setHours(0,0,0,0);
+
+        // Day of week of first day, Monday-based (0=Mon, 6=Sun)
+        let startDow = firstDay.getDay() - 1;
+        if (startDow < 0) startDow = 6;
+
+        let cells = '';
+
+        // Empty cells before first day
+        for (let i = 0; i < startDow; i++) {
+            cells += `<div class="cal-cell cal-empty"></div>`;
+        }
+
+        for (let d = 1; d <= lastDay.getDate(); d++) {
+            const cellDate = new Date(year, month, d);
+            cellDate.setHours(0,0,0,0);
+            const dd   = String(d).padStart(2, '0');
+            const mm   = String(month + 1).padStart(2, '0');
+            const yy   = String(year - 2000).padStart(2, '0');
+            const dateStr = `${dd}-${mm}-${yy}`;
+
+            const isFuture   = cellDate > today;
+            const isBeforeFirst = cellDate < firstEntryDate;
+            const isSmoked   = smokedDates.has(dateStr);
+            const isToday    = cellDate.getTime() === today.getTime();
+
+            let cls = 'cal-cell';
+            if (isFuture || isBeforeFirst) cls += ' cal-muted';
+            else if (isSmoked)             cls += ' cal-smoked';
+            else                           cls += ' cal-normal';
+            if (isToday)                   cls += ' cal-today';
+
+            cells += `<div class="${cls}">${d}</div>`;
+        }
+
+        const grid = document.getElementById('calGrid');
+        if (grid) grid.innerHTML = cells;
+
+        const label = document.getElementById('calMonthLabel');
+        if (label) label.textContent = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
+            .format(new Date(year, month));
+
+        if (prevBtn) prevBtn.onclick = () => {
+            if (this._calMonth === 0) { this._calMonth = 11; this._calYear--; }
+            else this._calMonth--;
+            this._renderMonthlyCalendar();
+        };
+        if (nextBtn) nextBtn.onclick = () => {
+            if (year === now.getFullYear() && month === now.getMonth()) return;
+            if (this._calMonth === 11) { this._calMonth = 0; this._calYear++; }
+            else this._calMonth++;
+            this._renderMonthlyCalendar();
+        };
+    }
+    
+    _makeSection(icon, title, subtitle, bodyHtml, helpText = null) {
+        const section = document.createElement('div');
+        section.className = 'analytics-section';
+        const subtitleHtml = subtitle
+            ? `<p class="analytics-section-subtitle">${subtitle}</p>`
+            : '';
+        const helpBtn = helpText
+            ? `<button class="section-help-btn">?</button>`
+            : '';
+        section.innerHTML = `
+            <div class="analytics-section-header">
+                <span class="ms">${icon}</span>
+                <div class="analytics-section-title-wrap">
+                    <h3>${title}</h3>
+                    ${subtitleHtml}
+                </div>
+                ${helpBtn}
+            </div>
+            <div class="analytics-section-body">${bodyHtml}</div>`;
+
+        if (helpText) {
+            const btn = section.querySelector('.section-help-btn');
+            const popover = document.createElement('div');
+            popover.className = 'section-help-popover';
+            popover.textContent = helpText;
+            document.body.appendChild(popover);
+
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.section-help-popover.visible')
+                    .forEach(p => p.classList.remove('visible'));
+                if (popover.classList.contains('visible')) {
+                    popover.classList.remove('visible');
+                    return;
+                }
+                const rect = btn.getBoundingClientRect();
+                popover.style.top  = `${rect.bottom + 8}px`;
+                const left = Math.min(rect.left, window.innerWidth - 240 - 8);
+                popover.style.left = `${Math.max(8, left)}px`;
+                popover.classList.add('visible');
+            });
+
+            document.addEventListener('click', () => popover.classList.remove('visible'));
+        }
+
+    return section;
+}
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
