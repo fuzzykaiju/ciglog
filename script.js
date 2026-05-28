@@ -2361,26 +2361,13 @@ class CigLogTracker {
                     <div class="weekly-stat-label">Longest Resistance Streak</div>
                     <div class="weekly-stat-value">${w7Streak} cravings</div>
                 </div>
-            </div>
-            <div class="weekly-triggers-card">
-                <div class="weekly-trigger-row">
-                    <div class="weekly-trigger-left">
-                        <span class="weekly-trigger-label">Most Common Trigger</span>
-                        <span class="weekly-trigger-sublabel">Logged most often</span>
-                        <div class="weekly-trigger-right">
-                            ${_renderTriggerValue(topFreqEntries)}
-                        </div>
-                    </div>
+                <div class="weekly-stat weekly-stat-full">
+                    <div class="weekly-stat-label">Most Logged Trigger</div>
+                    <div class="weekly-stat-value">${topFreqEntries.length ? topFreqEntries.map(e => `<span class="ms">${e.icon}</span> ${e.label}`).join(', ') : '—'}</div>
                 </div>
-                <div class="weekly-trigger-divider"></div>
-                <div class="weekly-trigger-row">
-                    <div class="weekly-trigger-left">
-                        <span class="weekly-trigger-label">Strongest Trigger</span>
-                        <span class="weekly-trigger-sublabel">Most likely to lead to smoking</span>
-                        <div class="weekly-trigger-right">
-                            ${_renderTriggerValue(strongestEntries)}
-                        </div>
-                    </div>
+                <div class="weekly-stat weekly-stat-full">
+                    <div class="weekly-stat-label">Most Associated with Smoking</div>
+                    <div class="weekly-stat-value">${strongestEntries.length ? strongestEntries.map(e => `<span class="ms">${e.icon}</span> ${e.label}`).join(', ') : '—'}</div>
                 </div>
             </div>`;
         content.appendChild(this._makeSection('date_range', 'Week in Review', null, weeklyBody,
