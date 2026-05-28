@@ -2208,16 +2208,7 @@ class CigLogTracker {
         const triggerStats = this._computeTriggerStats(entries, 5);
         const pairStats    = this._computeTriggerPairStats(entries, 5);
         const sentences    = this._generateInsightSentences(entries, triggerStats, convData);
-
-        // Global low-data notice
-        const totalEvents = entries.reduce((s, e) => s + e.cravings.length + e.smoked.length, 0);
-        if (totalEvents < 30) {
-            const notice = document.createElement('div');
-            notice.className = 'analytics-data-notice';
-            notice.innerHTML = `<span class="ms">info</span> Insights become more accurate after ~30 events logged. You have ${totalEvents} so far.`;
-            content.appendChild(notice);
-        }
-
+        
         // ── 1. Weekly summary (with delta comparison) ─────────────────────────
         // Normalize to midnight to avoid time-of-day boundary drift
         // last7  = today and the 6 days before it (7 days total, inclusive)
@@ -2376,9 +2367,9 @@ class CigLogTracker {
                     <div class="weekly-trigger-left">
                         <span class="weekly-trigger-label">Most Common Trigger</span>
                         <span class="weekly-trigger-sublabel">Logged most often</span>
-                    </div>
-                    <div class="weekly-trigger-right">
-                        ${_renderTriggerValue(topFreqEntries)}
+                        <div class="weekly-trigger-right">
+                            ${_renderTriggerValue(topFreqEntries)}
+                        </div>
                     </div>
                 </div>
                 <div class="weekly-trigger-divider"></div>
@@ -2386,9 +2377,9 @@ class CigLogTracker {
                     <div class="weekly-trigger-left">
                         <span class="weekly-trigger-label">Strongest Trigger</span>
                         <span class="weekly-trigger-sublabel">Most likely to lead to smoking</span>
-                    </div>
-                    <div class="weekly-trigger-right">
-                        ${_renderTriggerValue(strongestEntries)}
+                        <div class="weekly-trigger-right">
+                            ${_renderTriggerValue(strongestEntries)}
+                        </div>
                     </div>
                 </div>
             </div>`;
