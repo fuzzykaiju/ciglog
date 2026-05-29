@@ -2259,6 +2259,16 @@ class CigLogTracker {
             const cls = isGood ? 'delta-green' : 'delta-red';
             return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
         };
+        
+        // Delta arrow helper — returns just an arrow HTML or empty string
+        const _deltaArrow = (curr, prev, lowerIsBetter = true) => {
+            if (!hasPrevData || prev === 0) return '';
+            const isGood = lowerIsBetter ? curr < prev : curr > prev;
+            const arrow = curr < prev ? '↓' : curr > prev ? '↑' : '';
+            if (!arrow) return '';
+            const cls = isGood ? 'delta-green' : 'delta-red';
+            return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}</span><span class="weekly-delta-bracket">]</span>`;
+        };
 
         // Resistance rate delta — relative % change, higher is better
         const resRateDelta = (() => {
@@ -2315,6 +2325,41 @@ class CigLogTracker {
             x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
         const p7MLL   = p7Smoked * 20;
 
+        const w7Clean = last7.filter(e => 
+            e.smoked.reduce((s, x) => s + x.count, 0) === 0 && 
+            this._toDate(e.date) <= new Date()
+        ).length;
+
+        // Clean day streak — consecutive days from today backwards
+        let w7CleanStreak = 0;
+        let w7CurrentStreak = 0;
+        const sortedLast7Asc = [...last7].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+        for (const e of sortedLast7Asc) {
+            if (e.smoked.reduce((s, x) => s + x.count, 0) === 0) {
+                w7CurrentStreak++;
+                if (w7CurrentStreak > w7CleanStreak) w7CleanStreak = w7CurrentStreak;
+            } else {
+                w7CurrentStreak = 0;
+            }
+        }
+
+        // Previous 7 days equivalents
+        const p7Clean = prev7.filter(e =>
+            e.smoked.reduce((s, x) => s + x.count, 0) === 0
+        ).length;
+
+        let p7CleanStreak = 0;
+        let p7CurrentStreak = 0;
+        const sortedPrev7Asc = [...prev7].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+        for (const e of sortedPrev7Asc) {
+            if (e.smoked.reduce((s, x) => s + x.count, 0) === 0) {
+                p7CurrentStreak++;
+                if (p7CurrentStreak > p7CleanStreak) p7CleanStreak = p7CurrentStreak;
+            } else {
+                p7CurrentStreak = 0;
+            }
+        }
+
         // Display values — show — when no data this week
         const resistedDisplay   = w7Cravings === 0 ? '—' : String(w7Resisted);
         const resRateDisplay    = w7ResRate === null ? '—' : `${w7ResRate}%`;
@@ -2346,15 +2391,27 @@ class CigLogTracker {
                     </div>
                 </div>
                 <div class="weekly-stat">
+                    <div class="weekly-stat-label">Clean Days</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${w7Clean} / 7</span>${_delta(w7Clean, p7Clean, false)}
+                    </div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Clean Day Streak</div>
+                    <div class="weekly-stat-value-row">
+                        <span class="weekly-stat-value">${w7CleanStreak}d</span>${_delta(w7CleanStreak, p7CleanStreak, false)}
+                    </div>
+                </div>
+                <div class="weekly-stat">
                     <div class="weekly-stat-label">Money Spent</div>
                     <div class="weekly-stat-value-row">
-                        <span class="weekly-stat-value">${this.settings.currency}${parseFloat(w7Money.toFixed(2))}</span>${w7Smoked === 0 ? '' : _delta(w7Money, p7Money, true)}
+                        <span class="weekly-stat-value">${this.settings.currency}${parseFloat(w7Money.toFixed(2))}</span>${w7Smoked === 0 ? '' : _deltaArrow(w7Money, p7Money, true)}
                     </div>
                 </div>
                 <div class="weekly-stat">
                     <div class="weekly-stat-label">Time Lost</div>
                     <div class="weekly-stat-value-row">
-                        <span class="weekly-stat-value">${this._fmtMLL(w7MLL)}</span>${w7Smoked === 0 ? '' : _delta(w7MLL, p7MLL, true)}
+                        <span class="weekly-stat-value">${this._fmtMLL(w7MLL)}</span>${w7Smoked === 0 ? '' : _deltaArrow(w7MLL, p7MLL, true)}
                     </div>
                 </div>
                 <div class="weekly-stat weekly-stat-full">
