@@ -2156,37 +2156,39 @@ class CigLogTracker {
 
     // ── Insight sentences ─────────────────────────────────────────────────────
 
-    _generateInsightSentences(entries, triggerStats, convData) {
+    _generateInsightSentences(entries, triggerStats) {
         const sentences = [];
-
-        // 1. Most dangerous trigger
-        if (triggerStats.length > 0) {
-            const top = triggerStats[0];
-            const { label } = this._triggerLabel(top.id);
-            sentences.push(`${label} cravings lead to smoking ${Math.round(top.rate * 100)}% of the time.`);
-        }
-
-        // 2. Best-resisted trigger (lowest rate, still ≥5 events)
-        if (triggerStats.length > 1) {
-            const best = triggerStats[triggerStats.length - 1];
-            const { label } = this._triggerLabel(best.id);
-            sentences.push(`You resist ${label} cravings most successfully (${Math.round((1 - best.rate) * 100)}% resistance).`);
-        }
-
-        // 3. Peak bin
         const tod = this._computeTimeOfDay(entries);
         const binLabels = this._todBinLabels();
+
+        // Peak smoking time
         const peakBin = tod.smoked.indexOf(Math.max(...tod.smoked));
         if (Math.max(...tod.smoked) > 0) {
             sentences.push(`Most smoking occurs between ${binLabels[peakBin]}.`);
         }
 
-        // 4. Overall resistance
-        if (convData.total > 0) {
-            const resistance = Math.round((1 - convData.rate) * 100);
-            if (resistance >= 50) {
-                sentences.push(`You resist ${resistance}% of all cravings — keep it up.`);
-            }
+        // Most dangerous trigger
+        if (triggerStats.length > 0) {
+            const top = triggerStats[0];
+            const { label } = this._triggerLabel(top.id);
+            sentences.push(`${label} is your strongest smoking trigger (${Math.round(top.rate * 100)}% conversion).`);
+        }
+
+        // Daily average
+        const totalSmoked = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const uniqueDays  = new Set(entries.map(e => e.date)).size;
+        if (uniqueDays > 0 && totalSmoked > 0) {
+            const avg = (totalSmoked / uniqueDays).toFixed(1);
+            sentences.push(`You average ${avg} cigarettes per day in this period.`);
+        }
+
+        // Worst day
+        const worst = entries.reduce((acc, e) => {
+            const count = e.smoked.reduce((s, x) => s + x.count, 0);
+            return count > acc.count ? { date: e.date, count } : acc;
+        }, { date: null, count: 0 });
+        if (worst.count > 0) {
+            sentences.push(`Highest single day was ${worst.count} cigarettes (${worst.date}).`);
         }
 
         return sentences;
@@ -2203,11 +2205,10 @@ class CigLogTracker {
             content.innerHTML = '<p class="analytics-empty" style="margin-top:40px;">No data in this period. Start logging to see analytics.</p>';
             return;
         }
-
-        const convData     = this._computeConversionRate(entries);
+        
         const triggerStats = this._computeTriggerStats(entries, 5);
         const pairStats    = this._computeTriggerPairStats(entries, 5);
-        const sentences    = this._generateInsightSentences(entries, triggerStats, convData);
+        const sentences    = this._generateInsightSentences(entries, triggerStats);
         
         // ── 1. Weekly summary (with delta comparison) ─────────────────────────
         // Normalize to midnight to avoid time-of-day boundary drift
@@ -2248,11 +2249,10 @@ class CigLogTracker {
 
         // Delta helper — returns bracket HTML or empty string
         const _delta = (curr, prev, lowerIsBetter = true) => {
-            if (!hasPrevData) return '';
-            if (prev === 0 && curr > 0) return ' <span class="weekly-delta-bracket">[</span><span class="weekly-delta new">new</span><span class="weekly-delta-bracket">]</span>';
+            if (!hasPrevData) return '';            
             if (prev === 0) return '';
             const pct = Math.round(((curr - prev) / prev) * 100);
-            if (pct === 0) return '';
+            if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
             const arrow = pct < 0 ? '↓' : '↑';
             // lowerIsBetter: decrease = good (green), increase = bad (red)
             const isGood = lowerIsBetter ? pct < 0 : pct > 0;
@@ -2274,7 +2274,7 @@ class CigLogTracker {
         const resRateDelta = (() => {
             if (!hasPrevData || w7ResRate === null || p7ResRate === null || p7ResRate === 0) return '';
             const pct = Math.round(((w7ResRate - p7ResRate) / p7ResRate) * 100);
-            if (pct === 0) return '';
+            if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
             const arrow = pct > 0 ? '↑' : '↓';
             const cls   = pct > 0 ? 'delta-green' : 'delta-red';
             return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
@@ -2325,17 +2325,38 @@ class CigLogTracker {
             x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
         const p7MLL   = p7Smoked * 20;
 
-        const w7Clean = last7.filter(e => 
-            e.smoked.reduce((s, x) => s + x.count, 0) === 0 && 
+        const w7Clean = 7 - last7.filter(e =>
+            e.smoked.reduce((s, x) => s + x.count, 0) > 0 &&
             this._toDate(e.date) <= new Date()
         ).length;
 
-        // Clean day streak — consecutive days from today backwards
-        let w7CleanStreak = 0;
-        let w7CurrentStreak = 0;
-        const sortedLast7Asc = [...last7].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
-        for (const e of sortedLast7Asc) {
-            if (e.smoked.reduce((s, x) => s + x.count, 0) === 0) {
+        const p7Clean = 7 - prev7.filter(e =>
+            e.smoked.reduce((s, x) => s + x.count, 0) > 0
+        ).length;
+
+        // Build full 7-day arrays for streak calculation
+        const buildWeekDays = (startDate, days = 7) => {
+            const result = [];
+            for (let i = 0; i < days; i++) {
+                const dt = new Date(startDate);
+                dt.setDate(dt.getDate() + i);
+                const d = String(dt.getDate()).padStart(2, '0');
+                const m = String(dt.getMonth() + 1).padStart(2, '0');
+                const y = String(dt.getFullYear() - 2000).padStart(2, '0');
+                const dateStr = `${d}-${m}-${y}`;
+                const entry = this.entries.find(e => e.date === dateStr);
+                const smoked = entry ? entry.smoked.reduce((s, x) => s + x.count, 0) : 0;
+                result.push({ dateStr, smoked });
+            }
+            return result;
+        };
+
+        const last7Days = buildWeekDays(d7);
+        const prev7Days = buildWeekDays(d14);
+
+        let w7CleanStreak = 0, w7CurrentStreak = 0;
+        for (const day of last7Days) {
+            if (day.smoked === 0) {
                 w7CurrentStreak++;
                 if (w7CurrentStreak > w7CleanStreak) w7CleanStreak = w7CurrentStreak;
             } else {
@@ -2343,16 +2364,9 @@ class CigLogTracker {
             }
         }
 
-        // Previous 7 days equivalents
-        const p7Clean = prev7.filter(e =>
-            e.smoked.reduce((s, x) => s + x.count, 0) === 0
-        ).length;
-
-        let p7CleanStreak = 0;
-        let p7CurrentStreak = 0;
-        const sortedPrev7Asc = [...prev7].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
-        for (const e of sortedPrev7Asc) {
-            if (e.smoked.reduce((s, x) => s + x.count, 0) === 0) {
+        let p7CleanStreak = 0, p7CurrentStreak = 0;
+        for (const day of prev7Days) {
+            if (day.smoked === 0) {
                 p7CurrentStreak++;
                 if (p7CurrentStreak > p7CleanStreak) p7CleanStreak = p7CurrentStreak;
             } else {
@@ -2474,24 +2488,37 @@ class CigLogTracker {
             this._renderAnalytics();
         });
 
-        // ── 2. Conversion rate ────────────────────────────────────────────────
-        const convPct = Math.round(convData.rate * 100);
-        content.appendChild(this._makeSection('compare_arrows', 'Craving Outcomes', null,
-            convData.noData
-            ? '<p class="analytics-empty">No cravings or smoked entries in this period.</p>'
+        // ── 2. Period Overview ─────────────────────────────────────────────────────────
+        const periodSmoked  = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const periodMoney   = entries.reduce((s, e) => s + e.smoked.reduce((x, y) =>
+            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        const periodMLL     = periodSmoked * 20;
+        const periodDays    = new Set(entries.map(e => e.date)).size;
+        const periodAvg     = periodDays > 0 ? (periodSmoked / periodDays).toFixed(1) : '0';
+
+        content.appendChild(this._makeSection('overview', 'Period Overview', null,
+            periodSmoked === 0
+            ? '<p class="analytics-empty">No smoking logged in this period.</p>'
             : `
-            <div class="conversion-gauge-wrap">
-                <div class="conversion-rate-value">${convPct}%</div>
-                <div class="conversion-rate-label">of cravings led to smoking</div>
-                <div class="conversion-bar-track">
-                    <div class="conversion-bar-fill" style="width:${convPct}%"></div>
+            <div class="weekly-grid">
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Cigarettes Smoked</div>
+                    <div class="weekly-stat-value">${periodSmoked}</div>
                 </div>
-                <div class="conversion-meta">
-                    <span><strong>${convData.smoked}</strong>Smoked</span>
-                    <span><strong>${convData.cravings}</strong>Craved</span>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Daily Average</div>
+                    <div class="weekly-stat-value">${periodAvg}</div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Money Spent</div>
+                    <div class="weekly-stat-value">${this.settings.currency}${parseFloat(periodMoney.toFixed(2))}</div>
+                </div>
+                <div class="weekly-stat">
+                    <div class="weekly-stat-label">Time Lost</div>
+                    <div class="weekly-stat-value">${this._fmtMLL(periodMLL)}</div>
                 </div>
             </div>
-        `, 'Overall percentage of cravings that led to smoking in the selected period.'
+        `, 'Totals for the selected Deep Dive period.'
         ));
 
         // ── 3. Insights ───────────────────────────────────────────────────────
