@@ -2116,7 +2116,7 @@ class CigLogTracker {
                 allEvents.push({ dt: new Date(2000+y, m-1, d, hh, mm), type: 'smoked' });
             });
         });
-        allEvents.sort((a, b) => a.dt - b.dt);
+        allEvents.sort((a, b) => a.dt - b.dt || (a.type === 'smoked' ? -1 : 1));
 
         let current = 0, longest = 0;
         allEvents.forEach(ev => {
