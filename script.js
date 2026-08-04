@@ -274,6 +274,12 @@ class CigLogTracker {
         });
         document.getElementById('smokeTriggerToggle').addEventListener('click', () => {
             this._openGlobalTriggerModal('smoke', this._pendingSmokeTriggers);
+        });        
+        document.getElementById('smokeCopyTriggerBtn').addEventListener('click', () => {
+            this._pendingSmokeTriggers = [...this._recentCravingTriggers];
+            const label = this._pendingSmokeTriggers.length + ' trigger' + (this._pendingSmokeTriggers.length > 1 ? 's' : '') + ' copied';
+            this.smokeTriggerToggle.innerHTML = `<span class="ms ms-fill">bolt</span> ${label}`;
+            document.getElementById('smokeCopyTriggerBtn').style.display = 'none';
         });
 
         // Add-craving modal
@@ -858,9 +864,35 @@ class CigLogTracker {
         this.smokeMM.value = '';
         this.cigaretteCount.value = '1';
         this.saveSmokeBtn.disabled = true;
+        
         // Reset pending triggers
         this._pendingSmokeTriggers = [];
         this.smokeTriggerToggle.innerHTML = '<span class="ms ms-fill">bolt</span> Add Trigger';
+        
+        // Check for recent craving with triggers
+        this._recentCravingTriggers = [];
+        const entry = this._getEntry(date);
+        if (entry && entry.cravings.length) {
+            const now = new Date();
+            const recentCraving = [...entry.cravings]
+                .sort((a, b) => this._byTimeAsc(b, a))
+                .find(c => {
+                    const [hh, mm] = c.time.split(':').map(Number);
+                    const cravingTime = new Date();
+                    cravingTime.setHours(hh, mm, 0, 0);
+                    const diffMin = (now - cravingTime) / 60000;
+                    return diffMin >= 0 && diffMin <= 30 && (c.triggers || []).length > 0;
+                });
+            if (recentCraving) {
+                this._recentCravingTriggers = recentCraving.triggers;
+            }
+        }
+
+        // Update carry-over button visibility
+        const carryBtn = document.getElementById('smokeCopyTriggerBtn');
+        if (carryBtn) {
+            carryBtn.style.display = this._recentCravingTriggers.length ? 'flex' : 'none';
+        }
         if (date === this._today()) {
             this._buildTimePresets(this.smokeTimeDefaults, this.smokeHH, this.smokeMM,
                 () => this._updateSaveBtn('smoke'));
@@ -911,18 +943,19 @@ class CigLogTracker {
             const btn = document.createElement('button');
             btn.className = 'time-btn';
             btn.textContent = label;
-            btn.addEventListener('click', () => {
-                container.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
-                btn.classList.add('selected');
-                const target = new Date(now.getTime() - min * 60000);
-                if (min > 0 && target.getDate() !== now.getDate()) {
-                    hhInput.value = ''; mmInput.value = '';  // crossed midnight
-                } else {
+            const target = new Date(now.getTime() - min * 60000);
+            if (target.getDate() !== now.getDate()) {
+                btn.disabled = true;
+                btn.style.opacity = '0.3';
+            } else {
+                btn.addEventListener('click', () => {
+                    container.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
                     hhInput.value = String(target.getHours()).padStart(2, '0');
                     mmInput.value = String(target.getMinutes()).padStart(2, '0');
-                }
-                onChange();
-            });
+                    onChange();
+                });
+            }
             container.appendChild(btn);
         });
     }
@@ -2116,17 +2149,25 @@ class CigLogTracker {
                 allEvents.push({ dt: new Date(2000+y, m-1, d, hh, mm), type: 'smoked' });
             });
         });
-        allEvents.sort((a, b) => a.dt - b.dt || (a.type === 'smoked' ? -1 : 1));
+        allEvents.sort((a, b) => a.dt - b.dt || (a.type === 'craving' ? -1 : 1));
+
+        // Remove cravings that have a smoke at the exact same timestamp
+        const smokedTimes = new Set(
+            allEvents.filter(e => e.type === 'smoked').map(e => e.dt.getTime())
+        );
+        const filteredEvents = allEvents.filter(e => 
+            !(e.type === 'craving' && smokedTimes.has(e.dt.getTime()))
+        );
 
         let current = 0, longest = 0;
-        allEvents.forEach(ev => {
+        filteredEvents.forEach(ev => {
             if (ev.type === 'craving') {
                 current++;
                 if (current > longest) longest = current;
             } else {
                 current = 0;
             }
-        });
+        });        
         return longest;
     }
 
@@ -2440,6 +2481,7 @@ class CigLogTracker {
                     <div class="weekly-stat-label">Most Associated with Smoking</div>
                     <div class="weekly-stat-value">${strongestEntries.length ? strongestEntries.map(e => `<span class="ms">${e.icon}</span> ${e.label}`).join(', ') : '—'}</div>
                 </div>
+                ${last7.length < 7 ? `<p class="weekly-comparison-note">Based on ${last7.length} day${last7.length !== 1 ? 's' : ''} of logged data.</p>` : ''}
             </div>`;
         content.appendChild(this._makeSection('date_range', 'Week in Review', null, weeklyBody,
             'Your weekly summary compared to the previous 7-day period.'));

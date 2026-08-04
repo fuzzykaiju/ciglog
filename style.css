@@ -2264,6 +2264,7 @@ body.analytics-active .fixed-header {
 }
 
 .weekly-comparison-note {
+    grid-column: 1 / -1;
     margin-top: 8px;
     font-size: 0.72rem;
     color: var(--text-secondary);
