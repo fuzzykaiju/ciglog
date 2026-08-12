@@ -89,7 +89,7 @@
 
                     <!-- Price per cigarette -->
                     <div class="form-group">
-                        <label for="cigarettePrice">Price / cigarette:</label>
+                        <label for="cigarettePrice">Price / Smoke:</label>
                         <div class="currency-input">
                             <span id="currencySymbol" class="currency-symbol">₹</span>
                             <input type="number" id="cigarettePrice" min="0.1" step="0.1" value="25">
@@ -100,17 +100,15 @@
                     <div class="form-group" id="dailyLimitGroup">
                         <div class="daily-limit-label-row">
                             <input type="checkbox" id="dailyLimitEnabled">
-                            <label for="dailyLimitEnabled">Daily Cigarette Limit:</label>
+                            <label for="dailyLimitEnabled">Daily Smoke Limit:</label>
                         </div>
                         <input type="number" id="dailyLimitValue" min="0" max="99" value="" disabled>
-                        <p class="help-text" style="grid-column: 1 / -1; margin-top:4px;">
-                            Days you smoke at or below this limit count as "within limit"
                         </p>
                     </div>
 
                     <!-- Time zone -->
                     <div class="form-group">
-                        <label for="timezone">Time zone (UTC):</label>
+                        <label for="timezone">Time zone:</label>
                         <select id="timezone" class="time-select"></select>
                     </div>
                 </div>
@@ -432,7 +430,7 @@
                 <p>
                     Version: <code>1.3.4</code><br>
                     Build date: <code>2026-08-12</code><br>
-                    Service worker cache: <code>ciglog-v20</code><br>
+                    Service worker cache: <code>ciglog-v22</code><br>
                     Storage schema: <code>ciglog_v1</code>
                 </p>                    
                 <h3><span class="ms">spoke</span> Dependencies</h3>
