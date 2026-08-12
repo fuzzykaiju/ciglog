@@ -79,6 +79,7 @@ class CigLogTracker {
         this.modals = {
             settings:    $('settingsModal'),
             createToday: $('createTodayModal'),
+            dailyLimit:  $('dailyLimitModal'),
             addCraving:  $('addCravingModal'),
             addSmoke:    $('addSmokeModal'),
             info:        $('infoModal'),
@@ -87,7 +88,8 @@ class CigLogTracker {
             chart:       $('chartModal'),
             about:       $('aboutModal'),
             readme:      $('readmeModal'),
-            import:      $('importModal'),
+            changelog:   document.getElementById('changelogModal'),
+            roadmap:     document.getElementById('roadmapModal'),
             confirm:     $('confirmModal'),
             reset:       $('resetModal'),
             skippedDay:  $('skippedDayModal'),
@@ -139,14 +141,16 @@ class CigLogTracker {
         this.deleteCravingsBtn = $('deleteSelectedCravings');
         this.deleteSmokedBtn   = $('deleteSelectedSmoked');
 
+        // Daily limit
+        this.dailyLimitGroup = document.getElementById('dailyLimitGroup');
+
         // Chart
         this.timeRange    = $('timeRange');
         this.statSmoked   = $('totalSmoked');
         this.statCravings = $('totalCravings');
         this.statMoney    = $('moneySpent');
         this.statLifeLost = $('lifeLost');
-        this.charts       = { smoked: null, cravings: null, intensity: null, lifelost: null };
-        this.activeTab    = 'smoked';
+        this.chart        = null;
 
         // Trigger sections
         this.cravingTriggerToggle  = $('cravingTriggerToggle');
@@ -155,10 +159,7 @@ class CigLogTracker {
         this._pendingSmokeTriggers   = [];
         this._triggerModalSource     = null;
         this._activeTriggerPopover   = null;
-
-        // Import
-        this.csvFile = $('csvFile');
-
+        
         // Toast & confirm
         this.toast          = $('toastNotification');
         this.confirmTitle   = $('confirmTitle');
@@ -188,7 +189,7 @@ class CigLogTracker {
 
         // Menu items
         document.getElementById('chartBtn').addEventListener('click',
-            () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderActiveTab(), 100); });
+            () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderChart(), 100); });
         document.getElementById('analyticsBtn').addEventListener('click',
             () => { this._closeMenu(); this._showAnalyticsView(); });
         document.getElementById('settingsMenuBtn').addEventListener('click',
@@ -215,6 +216,10 @@ class CigLogTracker {
         });
         document.getElementById('readmeBtn').addEventListener('click',
             () => { this._closeMenu(); this._openReadme(); });
+        document.getElementById('changelogBtn').addEventListener('click',
+            () => { this._closeMenu(); this._openChangelog(); });
+        document.getElementById('roadmapBtn').addEventListener('click',
+            () => { this._closeMenu(); this._openRoadmap(); });
         document.getElementById('resetBtn').addEventListener('click',
             () => { this._closeMenu(); this._openModal('reset'); });
 
@@ -239,7 +244,36 @@ class CigLogTracker {
             () => this.csvFileSettings.click());
         this.csvFileSettings.addEventListener('change',
             () => this._importCSV('settings'));
+        
+        // Daily limit modal
+        document.getElementById('dailyLimitSet').addEventListener('click', () => {
+            const input = document.getElementById('onboardingLimitValue');
+            input.disabled = !input.disabled;
+            if (!input.disabled) {
+                // First click: enable input, change button text
+                document.getElementById('dailyLimitSet').textContent = 'Confirm';
+                input.focus();
+            } else {
+                // Second click: confirm and save
+                const val = parseInt(input.value);
+                if (isNaN(val) || input.value.trim() === '') {
+                    this._toast('Please enter a number (0–99) or skip.');
+                    return;
+                }
+                this.settings.dailyLimit = val;
+                this._persist('settings');
+                this._closeModal('dailyLimit');
+                this._finishOnboarding();
+            }
+        });
 
+        document.getElementById('dailyLimitSkip').addEventListener('click', () => {
+            this.settings.dailyLimit = null;
+            this._persist('settings');
+            this._closeModal('dailyLimit');
+            this._finishOnboarding();
+        });
+        
         // Create-today modal
         document.getElementById('createTodayYes').addEventListener('click',
             () => this._createTodayEntry());
@@ -333,10 +367,7 @@ class CigLogTracker {
             () => this._saveEditDay());
 
         // Chart controls
-        this.timeRange.addEventListener('change', () => this._renderActiveTab());
-        document.querySelectorAll('.chart-tab').forEach(tab => {
-            tab.addEventListener('click', () => this._switchTab(tab.dataset.tab));
-        });
+        this.timeRange.addEventListener('change', () => this._renderChart());
 
         // Edit trigger modal
         document.querySelector('.close-edit-trigger').addEventListener('click',
@@ -350,8 +381,8 @@ class CigLogTracker {
         document.querySelector('.close-chart').addEventListener('click',  () => this._closeChart());
         document.querySelector('.close-about').addEventListener('click',  () => this._closeModal('about'));
         document.querySelector('.close-readme').addEventListener('click', () => this._closeModal('readme'));
-        document.querySelector('.close-import').addEventListener('click', () => this._closeModal('import'));
-        document.getElementById('confirmImport').addEventListener('click', () => this._importCSV());
+        document.querySelector('.close-changelog').addEventListener('click', () => this._closeModal('changelog'));
+        document.querySelector('.close-roadmap').addEventListener('click',   () => this._closeModal('roadmap'));
 
         // Confirm modal
         this.confirmOk.addEventListener('click', () => {
@@ -368,7 +399,7 @@ class CigLogTracker {
         // Backdrop clicks
         window.addEventListener('click', (e) => {
             // Modals that must not close on backdrop: settings, createToday, confirm, reset
-            const locked = ['settings', 'createToday', 'confirm', 'reset', 'skippedDay'];
+            const locked = ['settings', 'createToday', 'confirm', 'reset', 'skippedDay', 'dailyLimit'];
             for (const [key, modal] of Object.entries(this.modals)) {
                 if (e.target === modal && !locked.includes(key)) {
                     if (key === 'chart') this._closeChart();
@@ -376,6 +407,12 @@ class CigLogTracker {
                     break;
                 }
             }
+        });
+
+        // Daily limit checkbox toggle
+        document.getElementById('dailyLimitEnabled').addEventListener('change', () => {
+            const dlValue = document.getElementById('dailyLimitValue');
+            dlValue.disabled = !document.getElementById('dailyLimitEnabled').checked;
         });
 
         // Header cell tooltips — tap to show on touch devices
@@ -411,34 +448,43 @@ class CigLogTracker {
     }
 
     _populateTimezones() {
-        const zones = [
-            'Asia/Kolkata', 'America/New_York', 'America/Los_Angeles',
-            'Europe/London', 'Europe/Paris',    'Asia/Tokyo',
-            'Australia/Sydney', 'Asia/Singapore', 'Asia/Dubai',
-            'America/Chicago',  'America/Toronto', 'Europe/Berlin',
-        ];
-        zones.forEach(tz => {
+        const select = this.timezoneInput;
+        select.innerHTML = '';
+        // from UTC-12:00 to UTC+14:00 in 30-min steps
+        for (let offset = -720; offset <= 840; offset += 30) {
+            const hours = Math.floor(Math.abs(offset) / 60);
+            const mins = Math.abs(offset) % 60;
+            const sign = offset >= 0 ? '+' : '-';
+            const label = `UTC${sign}${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
             const opt = document.createElement('option');
-            opt.value = opt.textContent = tz;
-            this.timezoneInput.appendChild(opt);
-        });
-        this.timezoneInput.value = 'Asia/Kolkata';
+            opt.value = String(offset);
+            opt.textContent = label;
+            select.appendChild(opt);
+        }
+        // Default: user's current offset (or +05:30)
+        const defaultOffset = this.settings?.timezoneOffset ?? -(new Date().getTimezoneOffset());
+        select.value = String(defaultOffset);
     }
 
     _saveSettings() {
         const currency = this.currencyInput.value;
         const price    = parseFloat(this.priceInput.value);
-        const timezone = this.timezoneInput.value;
+        const timezoneOffset = parseInt(this.timezoneInput.value);
 
-        if (!currency || isNaN(price) || price < 0.1 || !timezone) {
+        if (!currency || isNaN(price) || price < 0.1 || isNaN(timezoneOffset)) {
             this._toast('Please fill all fields correctly.');
             return;
         }
 
         if (!this.settings) {
-            // First-time setup
-            this.settings = { currency, cigarettePrice: price, timezone,
-                setupDate: new Date().toISOString(), customTriggers: [] };
+            // First-time setup            
+            this.settings = {
+                currency,
+                cigarettePrice: price,
+                timezoneOffset,
+                setupDate: new Date().toISOString(),
+                customTriggers: []
+            };
             this._persist('settings');
             this.currencyInput.disabled = false;
             this.timezoneInput.disabled = false;
@@ -448,12 +494,20 @@ class CigLogTracker {
         } else {
             // Update price + custom triggers
             this.settings.cigarettePrice = price;
+            this.settings.timezoneOffset = timezoneOffset;
             const custom = [
                 (document.getElementById('customTrigger0')?.value || '').trim(),
                 (document.getElementById('customTrigger1')?.value || '').trim(),
                 (document.getElementById('customTrigger2')?.value || '').trim(),
             ].filter(t => t.length > 0);
             this.settings.customTriggers = custom;
+
+            // When saving, read daily limit
+            const dailyLimitEnabled = document.getElementById('dailyLimitEnabled')?.checked;
+            const dailyLimitValue   = parseInt(document.getElementById('dailyLimitValue')?.value);
+            this.settings.dailyLimit = dailyLimitEnabled && !isNaN(dailyLimitValue) 
+                ? dailyLimitValue : null;
+
             this._persist('settings');
             this._toast('Settings saved <span class="ms ms-fill" style="color: var(--green);">check_small</span>');
             this._closeModal('settings');
@@ -461,49 +515,116 @@ class CigLogTracker {
     }
 
     _openSettings() {
-        this._closeMenu();
-        if (this.settings) {
-            this.currencyInput.value    = this.settings.currency;
-            this.priceInput.value       = this.settings.cigarettePrice;
-            this.timezoneInput.value    = this.settings.timezone;
-            this.currencySymbol.textContent = this.settings.currency;
-            this.currencyInput.disabled = true;
-            this.timezoneInput.disabled = true;
-            this.priceInput.disabled    = false;
-            this.settingsTitle.innerHTML = '<span class="ms">settings</span> Settings';
-            document.getElementById('saveSettings').innerHTML = '<span class="ms">save</span> Save';
-            this.closeSettingsBtn.style.display = 'block';
-            // Show custom triggers + export/import sections
-            this.customTriggerGroup.style.display  = 'flex';
-            this.exportImportGroup.style.display   = 'flex';
-            this.customTriggerSection.classList.remove('open');
-            // Populate custom trigger inputs
-            const custom = this.settings.customTriggers || [];
-            const $ = id => document.getElementById(id);
-            $('customTrigger0').value = custom[0] || '';
-            $('customTrigger1').value = custom[1] || '';
-            $('customTrigger2').value = custom[2] || '';
-        } else {
-            // First run — hide custom/export sections
-            this.customTriggerGroup.style.display = 'none';
-            this.exportImportGroup.style.display  = 'none';
-            document.getElementById('saveSettings').innerHTML = '<span class="ms">play_arrow</span> Start Tracking';
-            this.closeSettingsBtn.style.display = 'none';
+    this._closeMenu();
+
+    if (this.settings) {
+        // Existing settings – populate form
+        this.currencyInput.value = this.settings.currency;
+        this.priceInput.value = this.settings.cigarettePrice;
+        this.currencySymbol.textContent = this.settings.currency;
+
+        // Disable fields that cannot be changed after setup
+        this.currencyInput.disabled = true;
+        this.timezoneInput.disabled = true;
+        this.priceInput.disabled = false;
+
+        // Populate timezone offset – handle legacy named timezone
+        let offset = this.settings.timezoneOffset;
+        if (offset === undefined && this.settings.timezone) {
+            // Try to compute offset from named timezone
+            const now = new Date();
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: this.settings.timezone,
+                timeZoneName: 'shortOffset'
+            }).formatToParts(now);
+            const offsetPart = parts.find(p => p.type === 'timeZoneName');
+            if (offsetPart) {
+                const match = offsetPart.value.match(/([+-])(\d{2}):(\d{2})/);
+                if (match) {
+                    const sign = match[1] === '+' ? 1 : -1;
+                    offset = sign * (parseInt(match[2]) * 60 + parseInt(match[3]));
+                }
+            }
         }
-        this._openModal('settings');
+        // Fallback to +05:30 if still undefined
+        if (offset === undefined) offset = 330;
+        this.timezoneInput.value = String(offset);
+
+        // Set title and button
+        this.settingsTitle.innerHTML = '<span class="ms">settings</span> Settings';
+        document.getElementById('saveSettings').innerHTML = '<span class="ms">save</span> Save';
+        this.closeSettingsBtn.style.display = 'block';
+
+        // Show custom triggers & export/import sections
+        this.customTriggerGroup.style.display = 'flex';
+        this.exportImportGroup.style.display = 'flex';
+
+        // Daily limit group
+        this.dailyLimitGroup.classList.remove('daily-limit-hidden');
+        const dlEnabled = document.getElementById('dailyLimitEnabled');
+        const dlValue = document.getElementById('dailyLimitValue');
+        dlEnabled.checked = this.settings.dailyLimit !== null && this.settings.dailyLimit !== undefined;
+        dlValue.value = (this.settings.dailyLimit !== null && this.settings.dailyLimit !== undefined)
+            ? this.settings.dailyLimit
+            : '';
+        dlValue.disabled = !dlEnabled.checked;
+
+        this.customTriggerSection.classList.remove('open');
+
+        // Populate custom trigger inputs
+        const custom = this.settings.customTriggers || [];
+        const $ = id => document.getElementById(id);
+        $('customTrigger0').value = custom[0] || '';
+        $('customTrigger1').value = custom[1] || '';
+        $('customTrigger2').value = custom[2] || '';
+
+    } else {
+        // First run – hide advanced sections
+        this.customTriggerGroup.style.display = 'none';
+        this.exportImportGroup.style.display = 'none';
+        this.dailyLimitGroup.classList.add('daily-limit-hidden');
+        document.getElementById('saveSettings').innerHTML = '<span class="ms">play_arrow</span> Start Tracking';
+        this.closeSettingsBtn.style.display = 'none';
+        this.settingsTitle.innerHTML = '<span class="ms">wand_shine</span> Welcome to CigLog';
+
+        // Set default timezone offset to user's current system offset
+        const defaultOffset = -(new Date().getTimezoneOffset()); // minutes from UTC
+        this.timezoneInput.value = String(defaultOffset);
+
+        // Currency and price fields remain editable; timezone disabled after first save
+        this.currencyInput.disabled = false;
+        this.timezoneInput.disabled = false;
+        this.priceInput.disabled = false;
     }
+
+    this._openModal('settings');
+}
 
     // ── Date utilities ────────────────────────────────────────────────────────
 
     _today() {
-        const tz    = this.settings?.timezone ?? 'Asia/Kolkata';
-        const parts = new Intl.DateTimeFormat('en-US', {
-            timeZone: tz, day: '2-digit', month: '2-digit', year: '2-digit'
-        }).formatToParts(new Date());
-        const d = parts.find(p => p.type === 'day').value;
-        const m = parts.find(p => p.type === 'month').value;
-        const y = parts.find(p => p.type === 'year').value;
-        return `${d}-${m}-${y}`;
+        // If we have a named timezone (legacy), use it
+        if (this.settings?.timezone && typeof this.settings.timezone === 'string') {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: this.settings.timezone,
+                day: '2-digit', month: '2-digit', year: '2-digit'
+            }).formatToParts(new Date());
+            const d = parts.find(p => p.type === 'day').value;
+            const m = parts.find(p => p.type === 'month').value;
+            const y = parts.find(p => p.type === 'year').value;
+            return `${d}-${m}-${y}`;
+        }
+
+        // Otherwise use stored offset in minutes
+        const offset = this.settings?.timezoneOffset ?? 330; // default +05:30
+        const now = new Date();
+        const utc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(),
+                            now.getUTCHours(), now.getUTCMinutes()) + offset * 60000;
+        const d = new Date(utc);
+        const dd = String(d.getUTCDate()).padStart(2, '0');
+        const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const yy = String(d.getUTCFullYear() - 2000).padStart(2, '0');
+        return `${dd}-${mm}-${yy}`;
     }
 
     // "dd-mm-yy" → JS Date
@@ -586,8 +707,7 @@ class CigLogTracker {
     _createTodayEntry() {
         this._closeModal('createToday');
         this._ensureTodayExists();
-        this._renderTable();
-        this._startTimer();
+        this._openModal('dailyLimit');
     }
 
     addPreviousDay() {
@@ -1413,193 +1533,53 @@ class CigLogTracker {
         const totalMLL      = totalSmoked * 20;
         this.statSmoked.textContent   = totalSmoked;
         this.statCravings.textContent = totalCravings;
-        this.statMoney.textContent    = parseFloat(totalMoney.toFixed(2)).toString();
+        this.statMoney.textContent = this.settings.currency + parseFloat(totalMoney.toFixed(2)).toString();
         this.statLifeLost.textContent = this._fmtMLL(totalMLL);
-        // Update currency label in stats bar
-        const currLabel = document.getElementById('currencyLabel');
-        if (currLabel) currLabel.textContent = this.settings.currency;
 
         return filtered;
     }
 
-    _switchTab(tab) {
-        this.activeTab = tab;
-        document.querySelectorAll('.chart-tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.tab === tab);
-        });
-        ['smoked', 'cravings', 'intensity', 'lifelost'].forEach(key => {
-            document.getElementById(`chartPanel${key.charAt(0).toUpperCase() + key.slice(1)}`)
-                .style.display = key === tab ? 'block' : 'none';
-        });
-        this._renderActiveTab();
-    }
-
-    _renderActiveTab() {
-        if (this.activeTab === 'smoked')    this._renderChartSmoked();
-        if (this.activeTab === 'cravings')  this._renderChartCravings();
-        if (this.activeTab === 'intensity') this._renderChartIntensity();
-        if (this.activeTab === 'lifelost')  this._renderChartLifelost();
-    }
-
-    _renderChartSmoked() {
+    // New single chart
+    _renderChart() {
         const filtered = this._filteredEntries();
         const st = this._chartStyle();
 
-        if (this.charts.smoked) { this.charts.smoked.destroy(); this.charts.smoked = null; }
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
 
-        this.charts.smoked = new Chart(
-            document.getElementById('chartSmoked').getContext('2d'), {
+        this.chart = new Chart(
+            document.getElementById('chartMain').getContext('2d'), {
                 type: 'line',
-                data: {
-                    labels: filtered.map(e => e.date),
-                    datasets: [{
-                        label: 'Cigarettes Smoked',
-                        data: filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0)),
-                        borderColor: '#c8c8c8',
-                        backgroundColor: 'rgba(200,200,200,0.07)',
-                        pointBackgroundColor: '#c8c8c8',
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        borderWidth: 1.5,
-                        tension: 0.3,
-                        fill: true,
-                    }],
-                },
-                options: this._chartOptions(st),
-            }
-        );
-    }
-
-    _renderChartCravings() {
-        const filtered = this._filteredEntries();
-        const st = this._chartStyle();
-
-        if (this.charts.cravings) { this.charts.cravings.destroy(); this.charts.cravings = null; }
-
-        this.charts.cravings = new Chart(
-            document.getElementById('chartCravings').getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: filtered.map(e => e.date),
-                    datasets: [{
-                        label: 'Cravings',
-                        data: filtered.map(e => e.cravings.length),
-                        borderColor: '#909090',
-                        backgroundColor: 'rgba(144,144,144,0.07)',
-                        pointBackgroundColor: '#909090',
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        borderWidth: 1.5,
-                        tension: 0.3,
-                        fill: true,
-                    }],
-                },
-                options: this._chartOptions(st),
-            }
-        );
-    }
-
-    _renderChartIntensity() {
-        const filtered = this._filteredEntries();
-        const st = this._chartStyle();
-
-        if (this.charts.intensity) { this.charts.intensity.destroy(); this.charts.intensity = null; }
-
-        const low    = filtered.map(e => e.cravings.filter(c => c.intensity === 'low').length);
-        const medium = filtered.map(e => e.cravings.filter(c => c.intensity === 'medium').length);
-        const high   = filtered.map(e => e.cravings.filter(c => c.intensity === 'high').length);
-
-        this.charts.intensity = new Chart(
-            document.getElementById('chartIntensity').getContext('2d'), {
-                type: 'bar',
                 data: {
                     labels: filtered.map(e => e.date),
                     datasets: [
-                        { label: 'Low',    data: low,    backgroundColor: 'rgba(198,224,180,0.85)', borderColor: '#C6E0B4', borderWidth: 1, borderRadius: 2 },
-                        { label: 'Mid',    data: medium, backgroundColor: 'rgba(255,230,153,0.85)', borderColor: '#FFE699', borderWidth: 1, borderRadius: 2 },
-                        { label: 'High',   data: high,   backgroundColor: 'rgba(255,149,149,0.85)', borderColor: '#FF9595', borderWidth: 1, borderRadius: 2 },
+                        {
+                            label: 'Smoked',
+                            data: filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0)),
+                            borderColor: '#FF9595',
+                            backgroundColor: 'rgba(255,149,149,0.07)',
+                            pointBackgroundColor: '#FF9595',
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                        },
+                        {
+                            label: 'Craved',
+                            data: filtered.map(e => e.cravings.length),
+                            borderColor: '#d9d9d9',
+                            backgroundColor: 'rgba(217,217,217,0.04)',
+                            pointBackgroundColor: '#d9d9d9',
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            borderWidth: 1.5,
+                            borderDash: [5, 4],
+                            tension: 0.3,
+                            fill: false,
+                        },
                     ],
                 },
-                options: this._chartOptions(st, { stacked: true }),
-            }
-        );
-    }
-
-    _renderChartLifelost() {
-        const filtered = this._filteredEntries();
-        const st = this._chartStyle();
-
-        if (this.charts.lifelost) { this.charts.lifelost.destroy(); this.charts.lifelost = null; }
-
-        const self = this;
-        this.charts.lifelost = new Chart(
-            document.getElementById('chartLifelost').getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: filtered.map(e => e.date),
-                    datasets: [{
-                        label: 'Life Lost (min)',
-                        data: filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0) * 20),
-                        borderColor: '#FF9595',
-                        backgroundColor: 'rgba(255,149,149,0.07)',
-                        pointBackgroundColor: '#FF9595',
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        borderWidth: 1.5,
-                        tension: 0.3,
-                        fill: true,
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: st.textPrimary,
-                                font: { family: st.font, size: 11 },
-                                boxWidth: 12,
-                                padding: 10,
-                            },
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(26,26,26,0.95)',
-                            titleColor: st.textPrimary,
-                            bodyColor: st.textPrimary,
-                            borderColor: 'rgba(217,217,217,0.25)',
-                            borderWidth: 1,
-                            cornerRadius: 6,
-                            callbacks: {
-                                label: (item) => ` ${self._fmtMLL(item.raw)}`,
-                            },
-                        },
-                    },
-                    scales: {
-                        x: {
-                            grid:  { color: st.gridColor },
-                            ticks: { color: st.textSecond, maxRotation: 45,
-                                     font: { family: st.font, size: 10 } },
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid:  { color: st.gridColor },
-                            ticks: {
-                                stepSize: 20,
-                                color: st.textSecond,
-                                font: { family: st.font, size: 10 },
-                                callback: (val) => {
-                                    if (val < 60)  return `${val}m`;
-                                    const h = Math.floor(val / 60);
-                                    const m = val % 60;
-                                    return m ? `${h}h ${m}m` : `${h}h`;
-                                },
-                            },
-                        },
-                    },
-                    animation: { duration: 400, easing: 'easeOutQuart' },
-                },
+                options: this._chartOptions(st),
             }
         );
     }
@@ -1655,9 +1635,7 @@ class CigLogTracker {
 
     _closeChart() {
         this._closeModal('chart');
-        Object.keys(this.charts).forEach(k => {
-            if (this.charts[k]) { this.charts[k].destroy(); this.charts[k] = null; }
-        });
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
     }
 
     // ── Export / Import ───────────────────────────────────────────────────────
@@ -1742,8 +1720,7 @@ class CigLogTracker {
                 this._backfillSkippedDays();
                 this._ensureTodayExists();
                 this._closeModal('createToday');                
-                this._renderTable();
-                this._startTimer();
+                this._openModal('dailyLimit');
                 this._toast(`Imported ${parsed.length} days of data`);
                 // Reset file input
                 if (this.csvFileFirstRun) this.csvFileFirstRun.value = '';
@@ -1807,6 +1784,15 @@ class CigLogTracker {
 
     _openModal(key) {
         this.modals[key].style.display = 'block';
+
+        // Reset daily limit modal state when opened
+        if (key === 'dailyLimit') {
+            const setBtn = document.getElementById('dailyLimitSet');
+            const input = document.getElementById('onboardingLimitValue');
+            setBtn.textContent = 'Set Limit';
+            input.disabled = true;
+            input.value = '';
+        }
     }
 
     _closeModal(key) {
@@ -1818,7 +1804,6 @@ class CigLogTracker {
             this.confirmCancel.textContent = 'Cancel';
             this.confirmCancel.onclick = () => this._closeModal('confirm');
         }
-        if (key === 'import')  this.csvFile.value = '';
     }
 
     _openMenu()  { this.sideMenu.style.right = '0'; this.menuOverlay.style.display = 'block'; }
@@ -1960,11 +1945,17 @@ class CigLogTracker {
         }
     }
 
+    // Finish Onboarding
+    _finishOnboarding() {
+        this._renderTable();
+        this._startTimer();
+    }
+
     // ── README modal ──────────────────────────────────────────────────────────
 
     _openReadme() {
         const body = document.getElementById('readmeBody');
-        fetch('./readme-content.html')
+        fetch('./META-README.html')
             .then(response => {
                 if (!response.ok) throw new Error('Network response was not ok');
                 return response.text();
@@ -1980,6 +1971,26 @@ class CigLogTracker {
             });
     }
 
+    // ── Changelog modal ───────────────────────────────────────────────────────
+
+    _openChangelog() {
+        const body = document.getElementById('changelogBody');
+        fetch('./META-CHANGELOG.html')
+            .then(r => { if (!r.ok) throw new Error(); return r.text(); })
+            .then(html => { body.innerHTML = html; this._openModal('changelog'); })
+            .catch(() => { body.innerHTML = '<p>Error loading changelog.</p>'; this._openModal('changelog'); });
+    }
+
+    // ── Roadmap modal ─────────────────────────────────────────────────────────
+
+    _openRoadmap() {
+        const body = document.getElementById('roadmapBody');
+        fetch('./META-ROADMAP.html')
+            .then(r => { if (!r.ok) throw new Error(); return r.text(); })
+            .then(html => { body.innerHTML = html; this._openModal('roadmap'); })
+            .catch(() => { body.innerHTML = '<p>Error loading roadmap.</p>'; this._openModal('roadmap'); });
+    }
+
     // ── Toast & Confirm ───────────────────────────────────────────────────────
 
     _toast(msg, ms = 2200) {
@@ -1992,8 +2003,6 @@ class CigLogTracker {
             setTimeout(() => { this.toast.style.display = 'none'; }, 300);
         }, ms);
     }
-
-    showToast(msg, ms) { this._toast(msg, ms); }
 
     _confirm(title, message, onConfirm) {
         this.confirmTitle.textContent   = title;
@@ -2117,23 +2126,7 @@ class CigLogTracker {
             .sort((a, b) => b.rate - a.rate)
             .slice(0, 3);
     }
-
-    _computeConversionRate(entries) {
-        const totalCravings   = entries.reduce((s, e) => s + e.cravings.length, 0);
-        const totalSmokedCigs = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
-        // Conversion = cigarettes smoked / cravings logged
-        // Clamped to 100% in case user logs smokes without cravings
-        const rate = totalCravings > 0
-            ? Math.min(1, totalSmokedCigs / totalCravings) : 0;
-        return {
-            cravings: totalCravings,
-            smoked:   totalSmokedCigs,
-            total:    totalCravings + totalSmokedCigs,
-            noData:   totalCravings === 0 && totalSmokedCigs === 0,
-            rate,
-        };
-    }
-
+    
     _computeResistanceStreak(entries) {
         // Flatten all events chronologically; increment streak on craving, reset on any smoked entry
         const allEvents = [];
@@ -2366,9 +2359,8 @@ class CigLogTracker {
             x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
         const p7MLL   = p7Smoked * 20;
 
-        const w7Clean = 7 - last7.filter(e =>
-            e.smoked.reduce((s, x) => s + x.count, 0) > 0 &&
-            this._toDate(e.date) <= new Date()
+        const w7Clean = last7.filter(e =>
+            e.smoked.reduce((s, x) => s + x.count, 0) === 0
         ).length;
 
         const p7Clean = 7 - prev7.filter(e =>
@@ -2392,12 +2384,12 @@ class CigLogTracker {
             return result;
         };
 
-        const last7Days = buildWeekDays(d7);
         const prev7Days = buildWeekDays(d14);
 
+        const last7Sorted = [...last7].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
         let w7CleanStreak = 0, w7CurrentStreak = 0;
-        for (const day of last7Days) {
-            if (day.smoked === 0) {
+        for (const e of last7Sorted) {
+            if (e.smoked.reduce((s, x) => s + x.count, 0) === 0) {
                 w7CurrentStreak++;
                 if (w7CurrentStreak > w7CleanStreak) w7CleanStreak = w7CurrentStreak;
             } else {
@@ -2414,6 +2406,13 @@ class CigLogTracker {
                 p7CurrentStreak = 0;
             }
         }
+
+        // Daily limit stats
+        const limit = this.settings.dailyLimit;
+        const w7WithinLimit = limit !== null && limit !== undefined
+            ? last7.filter(e => e.smoked.reduce((s, x) => s + x.count, 0) <= limit).length : 0;
+        const p7WithinLimit = limit !== null && limit !== undefined
+            ? prev7.filter(e => e.smoked.reduce((s, x) => s + x.count, 0) <= limit).length : 0;
 
         // Display values — show — when no data this week
         const resistedDisplay   = w7Cravings === 0 ? '—' : String(w7Resisted);
@@ -2448,7 +2447,7 @@ class CigLogTracker {
                 <div class="weekly-stat">
                     <div class="weekly-stat-label">Clean Days</div>
                     <div class="weekly-stat-value-row">
-                        <span class="weekly-stat-value">${w7Clean} / 7</span>${_delta(w7Clean, p7Clean, false)}
+                        <span class="weekly-stat-value">${w7Clean} / ${last7.length}</span>${_delta(w7Clean, p7Clean, false)}
                     </div>
                 </div>
                 <div class="weekly-stat">
@@ -2457,6 +2456,20 @@ class CigLogTracker {
                         <span class="weekly-stat-value">${w7CleanStreak}d</span>${_delta(w7CleanStreak, p7CleanStreak, false)}
                     </div>
                 </div>
+                                
+                ${this.settings.dailyLimit !== null && this.settings.dailyLimit !== undefined ? `
+                    <div class="weekly-stat">
+                        <div class="weekly-stat-label">Days Within Limit</div>
+                        <div class="weekly-stat-value-row">
+                            <span class="weekly-stat-value">${w7WithinLimit} / ${last7.length}</span>${_delta(w7WithinLimit, p7WithinLimit, false)}
+                        </div>
+                    </div>
+                    <div class="weekly-stat">
+                        <div class="weekly-stat-label">Over Limit</div>
+                        <div class="weekly-stat-value">${(() => { const n = last7.filter(e => e.smoked.reduce((s, x) => s + x.count, 0) > limit).reduce((s, e) => s + Math.max(0, e.smoked.reduce((x, y) => x + y.count, 0) - limit), 0); return `${n} cig${n !== 1 ? 's' : ''}`; })()}</div>
+                    </div>
+                ` : ''}
+
                 <div class="weekly-stat">
                     <div class="weekly-stat-label">Money Spent</div>
                     <div class="weekly-stat-value-row">

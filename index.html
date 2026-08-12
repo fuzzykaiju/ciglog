@@ -68,34 +68,53 @@
                 <button class="close-btn close-settings" id="closeSettings" style="display:none;"><span class="ms">close</span></button>
             </div>
             <div class="modal-body settings-body">
-                <div class="form-group">
-                    <label for="currency">Currency:</label>
-                    <select id="currency" class="time-select">
-                        <option value="₹">Indian Rupee (₹)</option>
-                        <option value="$">US Dollar ($)</option>
-                        <option value="€">Euro (€)</option>
-                        <option value="£">British Pound (£)</option>
-                        <option value="¥">Japanese Yen (¥)</option>
-                        <option value="₽">Russian Ruble (₽)</option>
-                        <option value="R$">Brazilian Real (R$)</option>
-                        <option value="A$">Australian Dollar (A$)</option>
-                        <option value="C$">Canadian Dollar (C$)</option>
-                        <option value="CHF">Swiss Franc (CHF)</option>
-                    </select>
-                    <p class="help-text">Currency cannot be changed after setup</p>
-                </div>
-                <div class="form-group">
-                    <label for="cigarettePrice">Price per cigarette:</label>
-                    <div class="currency-input">
-                        <span id="currencySymbol" class="currency-symbol">₹</span>
-                        <input type="number" id="cigarettePrice" min="0.1" step="0.1" value="20">
+                <div class="settings-rows">
+                    <!-- Currency -->
+                    <div class="form-group">
+                        <label for="currency">Currency:</label>
+                        <select id="currency" class="time-select">
+                            <option value="₹">INR (₹)</option>
+                            <option value="$">USD ($)</option>
+                            <option value="€">EUR (€)</option>
+                            <option value="£">GBP (£)</option>
+                            <option value="¥">JPY (¥)</option>
+                            <option value="₽">RUB (₽)</option>
+                            <option value="R$">BRL (R$)</option>
+                            <option value="A$">AUD (A$)</option>
+                            <option value="C$">CAD (C$)</option>
+                            <option value="CHF">CHF (CHF)</option>
+                            <option value="元">CNY (元)</option>
+                        </select>
+                    </div>
+
+                    <!-- Price per cigarette -->
+                    <div class="form-group">
+                        <label for="cigarettePrice">Price / cigarette:</label>
+                        <div class="currency-input">
+                            <span id="currencySymbol" class="currency-symbol">₹</span>
+                            <input type="number" id="cigarettePrice" min="0.1" step="0.1" value="25">
+                        </div>
+                    </div>
+
+                    <!-- Daily limit -->
+                    <div class="form-group" id="dailyLimitGroup">
+                        <div class="daily-limit-label-row">
+                            <input type="checkbox" id="dailyLimitEnabled">
+                            <label for="dailyLimitEnabled">Daily Cigarette Limit:</label>
+                        </div>
+                        <input type="number" id="dailyLimitValue" min="0" max="99" value="" disabled>
+                        <p class="help-text" style="grid-column: 1 / -1; margin-top:4px;">
+                            Days you smoke at or below this limit count as "within limit"
+                        </p>
+                    </div>
+
+                    <!-- Time zone -->
+                    <div class="form-group">
+                        <label for="timezone">Time zone (UTC):</label>
+                        <select id="timezone" class="time-select"></select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="timezone">Time Zone:</label>
-                    <select id="timezone" class="time-select"></select>
-                    <p class="help-text">Timezone cannot be changed after setup</p>
-                </div>
+
                 <!-- Custom Triggers — shown only after setup -->
                 <div id="customTriggerGroup" class="form-group" style="display:none;">
                     <button class="trigger-toggle-btn" id="customTriggerToggle" style="max-width:300px;">
@@ -150,6 +169,29 @@
                     <button id="createTodayLoad" class="btn btn-secondary" style="width:100%;max-width:280px;"><span class="ms">file_open</span> Load from File</button>
                 </div>
                 <input type="file" id="csvFileFirstRun" accept=".csv" style="display:none;">
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Limit Modal -->
+    <div id="dailyLimitModal" class="modal">
+        <div class="modal-content actions-modal">
+            <div class="modal-header">
+                <h2><span class="ms">flag</span> Set a Daily Limit?</h2>
+            </div>
+            <div class="modal-body" style="padding:20px;text-align:center;">
+                <p style="margin-bottom:16px;color:var(--text-primary);">Set a daily cigarette limit to track how often you stay within your goal.</p>
+                <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px;">
+                    <input type="number" id="onboardingLimitValue" min="0" max="99" value=""
+                        style="width:70px;text-align:center;padding:10px;background:var(--bg-secondary);
+                        border:1px solid rgba(217,217,217,0.25);border-radius:8px;color:var(--text-primary);
+                        font-family:inherit;font-size:1.1rem;" disabled>
+                </div>
+                <p class="help-text" style="margin-bottom:24px;">Can be changed anytime in <span class="ms" style="font-size:1rem;">settings</span> Settings</p>
+                <div style="display:flex;gap:12px;justify-content:center;">
+                    <button id="dailyLimitSkip" class="btn btn-ghost" style="flex:1;">Skip</button>
+                    <button id="dailyLimitSet" class="btn btn-primary" style="flex:1;">Set Limit</button>
+                </div>
             </div>
         </div>
     </div>
@@ -322,8 +364,16 @@
                 <span class="menu-icon"><span class="ms">description</span></span>
                 <span>Read Me</span>
             </button>
+            <button id="changelogBtn" class="menu-item">
+                <span class="menu-icon"><span class="ms">list_alt</span></span>
+                <span>Changelog</span>
+            </button>
+            <button id="roadmapBtn" class="menu-item">
+                <span class="menu-icon"><span class="ms">route</span></span>
+                <span>Roadmap</span>
+            </button>
             <button id="resetBtn" class="menu-item reset-menu-item">
-                <span class="menu-icon"><span class="ms">delete</span></span>
+                <span class="menu-icon"><span class="ms">replay</span></span>
                 <span>Reset All Data</span>
             </button>
         </div>
@@ -357,32 +407,15 @@
                         <span id="totalCravings" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Money (<span id="currencyLabel"></span>)</span>
+                        <span class="stat-label">Money Spent</span>
                         <span id="moneySpent" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Life<br>Lost</span>
+                        <span class="stat-label">Life Lost</span>
                         <span id="lifeLost" class="stat-value">0m</span>
                     </div>
                 </div>
-                <div class="chart-tabs">
-                    <button class="chart-tab active" data-tab="smoked">
-                        <span class="tab-dot smoked-dot"></span> Smoked
-                    </button>
-                    <button class="chart-tab" data-tab="cravings">
-                        <span class="tab-dot cravings-dot"></span> Craved
-                    </button>
-                    <button class="chart-tab" data-tab="intensity">
-                        <span class="tab-dot intensity-dot"></span> Intensity
-                    </button>
-                    <button class="chart-tab" data-tab="lifelost">
-                        <span class="tab-dot lifelost-dot"></span> Life Lost
-                    </button>
-                </div>
-                <div class="chart-container" id="chartPanelSmoked"><canvas id="chartSmoked"></canvas></div>
-                <div class="chart-container" id="chartPanelCravings" style="display:none;"><canvas id="chartCravings"></canvas></div>
-                <div class="chart-container" id="chartPanelIntensity" style="display:none;"><canvas id="chartIntensity"></canvas></div>
-                <div class="chart-container" id="chartPanelLifelost" style="display:none;"><canvas id="chartLifelost"></canvas></div>
+                <div class="chart-container" id="chartPanelMain"><canvas id="chartMain"></canvas></div>
             </div>
         </div>
     </div>
@@ -395,22 +428,25 @@
                 <button class="close-btn close-about"><span class="ms">close</span></button>
             </div>
             <div class="modal-body about-body">
-                <p><strong>CigLog</strong><br>Version: 1.3.3<br>Build date: 2026-08-05</p>
-                <p>Service worker cache: <code>ciglog-v20</code><br>Storage schema: <code>ciglog_v1</code></p>
-
-                <h3><span class="ms">extension</span> Dependencies</h3>
-                <ul>
-                    <li>Chart.js: <span id="chartVersion">loading...</span></li>
-                    <li>Material Symbols: Google Fonts (Rounded)</li>
-                    <li>Roboto Mono: Google Fonts</li>
-                </ul>
-
-                <h3><span class="ms">desktop_windows</span> Runtime</h3>
-                <ul>
-                    <li>User agent: <span id="userAgent"></span></li>
-                    <li>LocalStorage: <span id="storageStatus">available</span></li>
-                    <li>Service worker: <span id="swStatus">checking...</span></li>
-                </ul>
+                <h3><span class="ms">deployed_code</span> Code</h3>
+                <p>
+                    Version: <code>1.3.4</code><br>
+                    Build date: <code>2026-08-12</code><br>
+                    Service worker cache: <code>ciglog-v20</code><br>
+                    Storage schema: <code>ciglog_v1</code>
+                </p>                    
+                <h3><span class="ms">spoke</span> Dependencies</h3>
+                <p>
+                    Chart.js: <span id="chartVersion">loading...</span><br>
+                    Material Symbols: Google Fonts (Rounded)<br>
+                    Roboto Mono: Google Fonts
+                </p>
+                <h3><span class="ms">computer</span> Runtime</h3>
+                <p>
+                    User agent: <span id="userAgent"></span><br>
+                    LocalStorage: <span id="storageStatus">available</span><br>
+                    Service worker: <span id="swStatus">checking...</span>
+                </p>
     
                 <div class="version"><a href="https://github.com/fuzzykaiju/ciglog" target="_blank" rel="noopener" style="color:var(--text-primary);">GitHub</a> · MIT License</div>
             </div>
@@ -430,22 +466,31 @@
         </div>
     </div>
 
-    <!-- Import Modal -->
-    <div id="importModal" class="modal">
-        <div class="modal-content">
+    <!-- Changelog Modal -->
+    <div id="changelogModal" class="modal">
+        <div class="modal-content readme-modal">
             <div class="modal-header">
-                <h2>Import CSV</h2>
-                <button class="close-btn close-import"><span class="ms">close</span></button>
+                <h2><span class="ms">list_alt</span> Changelog</h2>
+                <button class="close-btn close-changelog"><span class="ms">close</span></button>
             </div>
-            <div class="modal-body">
-                <input type="file" id="csvFile" accept=".csv" class="file-input">
-                <p class="help-text">CSV Format: Date, Time, Type, Intensity/Count, Price, Notes</p>
-                <button id="confirmImport" class="btn btn-primary">Import Data</button>
+            <div class="modal-body readme-body" id="changelogBody">
             </div>
         </div>
     </div>
 
-    <!-- Skipped Day Modal -->
+    <!-- Roadmap Modal -->
+    <div id="roadmapModal" class="modal">
+        <div class="modal-content readme-modal">
+            <div class="modal-header">
+                <h2><span class="ms">route</span> Roadmap</h2>
+                <button class="close-btn close-roadmap"><span class="ms">close</span></button>
+            </div>
+            <div class="modal-body readme-body" id="roadmapBody">
+            </div>
+        </div>
+    </div>
+
+        <!-- Skipped Day Modal -->
     <div id="skippedDayModal" class="modal">
         <div class="modal-content actions-modal">
             <div class="modal-header">
@@ -510,7 +555,7 @@
                 <p style="margin-bottom:24px;color:var(--text-secondary);font-size:0.9rem;">This action cannot be undone.</p>
                 <div style="display:flex;gap:12px;justify-content:center;">
                     <button id="cancelReset" class="btn btn-ghost" style="flex:1;">Cancel</button>
-                    <button id="confirmReset" class="btn btn-danger" style="flex:1;"><span class="ms">delete</span> Reset</button>
+                    <button id="confirmReset" class="btn btn-danger" style="flex:1;"><span class="ms">replay</span> Reset</button>
                 </div>
             </div>
         </div>

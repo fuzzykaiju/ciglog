@@ -691,69 +691,6 @@ input[type="number"] {
     font-weight: bold;
 }
 
-/* Number Input */
-.number-input {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    width: 100%;
-    max-width: 300px;
-    margin: 5px 0;
-}
-
-.number-input input {
-    flex: 0 0 70px;
-    text-align: center;
-    min-width: 0;
-    padding: 12px 5px;
-    font-size: 1.1rem;
-    width: 70px;
-    border: 1px solid rgba(217, 217, 217, 0.25);
-    border-radius: 8px;
-    background-color: var(--bg-primary);
-    transition: all 0.2s;
-}
-
-.number-input input:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(217, 217, 217, 0.15);
-    border-color: var(--text-primary);
-}
-
-.number-btn {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 1px solid rgba(217, 217, 217, 0.25);
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    font-size: 1.5rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: filter 0.2s, transform 0.2s;
-    flex-shrink: 0;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.number-btn:hover {
-    filter: brightness(1.15);
-    transform: scale(1.05);
-}
-
-.number-btn:active {
-    transform: scale(0.95);
-}
-
-.number-btn.small {
-    width: 28px;
-    height: 28px;
-    font-size: 1.1rem;
-    box-shadow: none;
-}
-
 /* Form Actions */
 .form-actions {
     padding: 20px;
@@ -847,15 +784,15 @@ input[type="number"] {
     border: 1px solid rgba(217, 217, 217, 0.25);
     border-radius: 6px;
     overflow: hidden;
-    width: 90%;
-    max-width: 300px;
+    width: 100%;
+    max-width: none;
 }
 
 .currency-symbol {
     padding: 0 12px;
-    background-color: rgba(217, 217, 217, 0.08);
+    background-color: var(--bg-secondary);
     color: var(--text-primary);
-    font-weight: bold;
+    font-weight: normal;
     height: 100%;
     display: flex;
     align-items: center;
@@ -1249,21 +1186,6 @@ input[type="number"] {
     background-color: rgba(255, 149, 149, 0.15);
 }
 
-.edit-trigger-wrap {
-    width: 100%;
-    margin-top: 6px;
-}
-
-.edit-trigger-wrap .trigger-toggle-btn {
-    max-width: 100%;
-    font-size: 0.78rem;
-    padding: 6px 10px;
-}
-
-.edit-trigger-wrap .trigger-section {
-    max-width: 100%;
-}
-
 .edit-count-input {
     display: flex;
     align-items: center;
@@ -1497,19 +1419,6 @@ input[type="number"] {
 }
 #customTriggerToggle:hover { filter: brightness(1.15); }
 
-/* Create today two-button row */
-.create-today-btn-row {
-    flex-direction: row !important;
-    gap: 10px;
-    margin-top: 16px;
-}
-
-.create-today-btn-row .btn {
-    flex: 1;
-    font-size: 0.85rem;
-    padding: 10px 8px;
-}
-
 /* Chart tabs */
 .chart-tabs {
     display: flex;
@@ -1564,11 +1473,6 @@ input[type="number"] {
     background-color: var(--red);
 }
 
-.money-decimal {
-    font-size: 0.75rem;
-    opacity: 0.8;
-}
-
 .chart-container {
     position: relative;
     height: 300px;
@@ -1577,12 +1481,12 @@ input[type="number"] {
 
 .chart-stats {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    padding: 12px;
+    grid-template-columns: 1fr 1fr;
+    padding: 0;
     background-color: var(--bg-secondary);
     border-radius: 8px;
     margin-top: 14px;
-    border: 1px solid rgba(217, 217, 217, 0.1);
+    border: 1px solid rgba(217,217,217,0.1);
 }
 
 .stat-item {
@@ -1592,7 +1496,17 @@ input[type="number"] {
     justify-content: center;
     gap: 4px;
     text-align: center;
-    padding: 4px 2px;
+    padding: 10px 8px;
+}
+
+.stat-item:nth-child(1),
+.stat-item:nth-child(3) {
+    border-right: 1px solid rgba(217,217,217,0.08);
+}
+
+.stat-item:nth-child(1),
+.stat-item:nth-child(2) {
+    border-bottom: 1px solid rgba(217,217,217,0.08);
 }
 
 .stat-label {
@@ -2057,78 +1971,8 @@ body.analytics-active .fixed-header {
 }
 
 /* Global data notice */
-.analytics-data-notice {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 14px;
-    background-color: rgba(241, 151, 109, 0.08);
-    border: 1px solid rgba(241, 151, 109, 0.2);
-    border-radius: 8px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    line-height: 1.4;
-}
-
-.analytics-data-notice .ms {
-    font-size: 1rem;
-    color: var(--amber);
-    flex-shrink: 0;
-}
-
 .analytics-section-body {
     padding: 16px;
-}
-
-/* Conversion rate */
-.conversion-gauge-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
-.conversion-rate-value {
-    font-size: 2.4rem;
-    font-weight: bold;
-    color: var(--text-primary);
-    line-height: 1;
-}
-
-.conversion-rate-label {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    text-align: center;
-}
-
-.conversion-bar-track {
-    width: 100%;
-    max-width: 300px;
-    height: 10px;
-    background-color: rgba(217, 217, 217, 0.12);
-    border-radius: 5px;
-    overflow: hidden;
-}
-
-.conversion-bar-fill {
-    height: 100%;
-    border-radius: 5px;
-    background-color: var(--violet);
-    transition: width 0.6s ease;
-}
-
-.conversion-meta {
-    display: flex;
-    gap: 20px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    text-align: center;
-}
-
-.conversion-meta span strong {
-    display: block;
-    color: var(--text-primary);
-    font-size: 1rem;
 }
 
 /* Weekly summary */
@@ -2192,46 +2036,10 @@ body.analytics-active .fixed-header {
 .weekly-delta.new         { color: var(--text-secondary); font-weight: normal; }
 
 /* Unified trigger card */
-.weekly-triggers-card {
-    margin-top: 12px;
-    background-color: rgba(217, 217, 217, 0.05);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.weekly-trigger-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 12px;
-    gap: 12px;
-}
-
-.weekly-trigger-left {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
 .weekly-trigger-label {
     font-size: 0.82rem;
     color: var(--text-primary);
     font-weight: bold;
-}
-
-.weekly-trigger-sublabel {
-    font-size: 0.68rem;
-    color: var(--text-secondary);
-    opacity: 0.8;
-}
-
-.weekly-trigger-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    justify-content: flex-end;
 }
 
 .weekly-trigger-entry {
@@ -2255,12 +2063,6 @@ body.analytics-active .fixed-header {
 .weekly-trigger-value.muted {
     color: var(--text-secondary);
     font-weight: normal;
-}
-
-.weekly-trigger-divider {
-    height: 1px;
-    background-color: rgba(217, 217, 217, 0.08);
-    margin: 0 12px;
 }
 
 .weekly-comparison-note {
@@ -2333,19 +2135,6 @@ body.analytics-active .fixed-header {
     font-size: 0.7rem;
     color: var(--text-secondary);
 }
-
-.trigger-strength {
-    font-size: 0.65rem;
-    font-weight: bold;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 1px 5px;
-    border-radius: 3px;
-}
-
-.strength-strong   { color: var(--red);    background: rgba(255,149,149,0.12); }
-.strength-moderate { color: var(--yellow); background: rgba(255,230,153,0.12); }
-.strength-weak     { color: var(--green);  background: rgba(198,224,180,0.12); }
 
 /* Trigger pairs */
 .trigger-pair-list {
@@ -2586,4 +2375,157 @@ body.analytics-active .fixed-header {
     color: var(--text-primary);
     min-width: 130px;
     text-align: center;
+}
+
+.roadmap-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.roadmap-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.roadmap-done {
+    color: var(--text-secondary);
+}
+
+.roadmap-inProgress {
+    color: var(--text-primary);
+    font-style: italic;
+}
+
+.roadmap-upcoming {
+    color: var(--text-primary);
+}
+
+.roadmap-check {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.roadmap-done .roadmap-check {
+    color: var(--green);
+}
+
+.roadmap-upcoming .roadmap-check {
+    color: var(--text-secondary);
+}
+
+#dailyLimitValue:disabled {
+    color: var(--text-secondary);
+    opacity: 1;
+    background: #343233;
+    border-color: rgba(217,217,217,0.15);
+}
+
+#dailyLimitValue:not(:disabled) {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-color: rgba(217,217,217,0.25);
+}
+
+#dailyLimitEnabled {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+#dailyLimitGroup .daily-limit-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#dailyLimitValue {
+    width: 100%;
+    max-width: 120px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1.1rem;
+    justify-self: start;
+}
+
+#dailyLimitEnabled:checked ~ label {
+    color: var(--text-primary);
+}
+
+#dailyLimitEnabled:not(:checked) ~ label {
+    color: var(--text-secondary);
+}
+
+/* Settings rows – two‑column grid */
+.settings-rows .form-group {
+    display: grid !important;
+    grid-template-columns: auto 1fr;
+    gap: 8px 16px;
+    align-items: center;
+    padding: 6px 20px;
+    flex-direction: unset;
+}
+
+.settings-rows .form-group label {
+    font-weight: bold;
+    margin-bottom: 0;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.settings-rows .form-group input,
+.settings-rows .form-group select {
+    width: 100%;
+    max-width: none;   /* remove the old max-width */
+}
+
+.settings-rows .form-group.daily-limit-hidden {
+    display: none !important;
+}
+
+/* Daily limit controls (checkbox + number) */
+.daily-limit-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.daily-limit-controls input[type="number"] {
+    width: 70px;
+    flex-shrink: 0;
+}
+
+/* For the daily limit row: the label-cell contains checkbox + label */
+.daily-limit-label-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.daily-limit-label-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.daily-limit-label-row label {
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0;
+}
+
+/* Keep custom trigger & export/import sections vertically stacked */
+#customTriggerGroup,
+#exportImportGroup {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 20px;
 }

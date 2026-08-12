@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ciglog-v20';
+const CACHE_NAME = 'ciglog-v21';
 const ASSETS = [
   './index.html',
   './script.js',
@@ -6,7 +6,9 @@ const ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './readme-content.html',
+  './META-README.html',
+  './META-CHANGELOG.html',
+  './META-ROADMAP.html',
   'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 

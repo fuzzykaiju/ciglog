@@ -1,0 +1,63 @@
+<h3>CigLog - Cigarette Logger</h3>
+<p>A data-driven PWA to help you log cigarettes craved and smoked, and get analytics for money spent and minutes of life lost.</p>
+
+<h3><span class="ms">widgets</span> Features</h3>
+    <ul>
+        <li>Daily log - cravings count, cigarettes smoked, money spent, minutes of life lost</li>
+        <li>Precise tracking - log each event with exact time</li>
+        <li>Craving intensity - low <span class="ms ms-fill" style="color:var(--low-intensity);">circle</span>, mid <span class="ms ms-fill" style="color:var(--medium-intensity);">circle</span>, high <span class="ms ms-fill" style="color:var(--high-intensity);">circle</span> for every craving</li>
+        <li>Smart time presets - "just now", "5m ago", "1hr ago"</li>
+        <li>Timeline view - all events of a day in chronological order</li>
+        <li>Notes - add personal notes to each day</li>
+        <li>Full edit mode - modify or delete any entry</li>
+        <li>Interactive charts - smoked, cravings, intensity, and life lost</li>
+        <li>CSV export / import - backup or analyse your data elsewhere</li>
+        <li>Auto-detected skipped days - with option to mark as clean</li>
+        <li>Installable - works offline, add to home screen</li>
+    </ul>
+
+<h3><span class="ms">person_play</span> How to Use</h3>
+    <ul>
+        <li>Tap <span class="ms">sentiment_frustrated</span> to log a craving with time &amp; intensity</li>
+        <li>Tap <span class="ms">smoking_rooms</span> to log a cigarette with time</li>
+        <li>Tap <span class="ms">keyboard_arrow_down</span> to see the day's timeline and add notes</li>
+        <li>Tap <span class="ms">more_vert</span> to edit or delete entries</li>
+        <li>Tap <span class="ms">warning</span> on skipped days for more actions</li>
+        <li>Open the side menu for charts, export/import, and settings</li>
+    </ul>
+
+<h3><span class="ms">code_blocks</span> Tech Stack</h3>
+    <ul>
+        <li>Plain HTML, CSS, Vanilla JS — no frameworks</li>
+        <li>Chart.js for charts, Material Symbols for icons</li>
+        <li>Browser localStorage for data</li>
+        <li>Service Worker + Web App Manifest for offline &amp; installability</li>
+    </ul>
+
+<h3><span class="ms">database</span> Data Model</h3>
+    <ul>
+        <li>Entries keyed by date (dd-mm-yyyy)</li>
+        <li>Each entry: cravings (time, intensity, triggers), smoked (time, count, price, triggers), notes, skipped/clean flags</li>
+        <li>Triggers: 4 categories (physiological, psychological, social, situational), multiple selectable per entry, up to 3 custom triggers</li>
+        <li>CSV export/import (backup/migration)</li>
+    </ul>
+
+<h3><span class="ms">mobile_arrow_down</span> PWA Features</h3>
+    <ul>
+        <li>Installable - works offline, add to home screen</li>
+        <li>Service Worker - enables offline functionality</li>
+        <li>Web App Manifest - defines app appearance and behavior</li>
+    </ul>
+
+<h3><span class="ms">analytics</span> Analytics</h3>
+    <ul>
+        <li>Week in Review: 7-day summary of cigarettes smoked, cravings, resisted cravings, resistance rate, clean days, clean day streak, money spent, time lost, longest resistance streak, and top triggers. Each stat shows a delta compared to the previous 7-day period where data is available.</li>
+        <li>Monthly Calendar: calendar view of the current month. Dates with smoking are highlighted in red. Navigate back to previous months using the arrows.</li>
+        <li>Deep Dive: period-based analysis with a configurable window (1 week to 2 years).</li>
+        <li>Period Overview: total cigarettes smoked, daily average, money spent, and time lost for the selected period.</li>
+        <li>Insights: behavioural patterns detected from your data: peak smoking time, strongest trigger, daily average, and worst day.</li>
+        <li>Trigger Rankings: triggers ranked by how often they lead to smoking, with logged, smoked, and passed counts. Requires at least 5 logged events per trigger.</li>
+        <li>Trigger Combinations: trigger pairs that frequently appear together, ranked by smoking rate. Requires at least 5 combined events per pair.</li>
+        <li>Time of Day: bar chart showing when cravings and smoking are most concentrated, grouped in 2-hour bins.</li>
+    </ul>
+<div class="motivation">Log it. Face it. Quit it.</div>
