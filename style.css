@@ -2445,7 +2445,7 @@ body.analytics-active .fixed-header {
 
 #dailyLimitValue {
     width: 100%;
-    max-width: 120px;
+    max-width: none;
     text-align: center;
     padding: 10px;
     border-radius: 8px;
