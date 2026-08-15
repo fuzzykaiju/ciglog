@@ -260,7 +260,12 @@ class CigLogTracker {
                     this._toast('Please enter a number (0–99) or skip.');
                     return;
                 }
-                this.settings.dailyLimit = val;
+                const newLimit = !isNaN(val) ? val : null;
+                if (newLimit !== null) {
+                    if (!this.settings.limitHistory) this.settings.limitHistory = [];
+                    this.settings.limitHistory.push({ limit: newLimit, from: this._today() });
+                }
+                this.settings.dailyLimit = newLimit;
                 this._persist('settings');
                 this._closeModal('dailyLimit');
                 this._finishOnboarding();
@@ -483,7 +488,9 @@ class CigLogTracker {
                 cigarettePrice: price,
                 timezoneOffset,
                 setupDate: new Date().toISOString(),
-                customTriggers: []
+                customTriggers: [],
+                dailyLimit: null,
+                limitHistory: []
             };
             this._persist('settings');
             this.currencyInput.disabled = false;
@@ -505,8 +512,14 @@ class CigLogTracker {
             // When saving, read daily limit
             const dailyLimitEnabled = document.getElementById('dailyLimitEnabled')?.checked;
             const dailyLimitValue   = parseInt(document.getElementById('dailyLimitValue')?.value);
-            this.settings.dailyLimit = dailyLimitEnabled && !isNaN(dailyLimitValue) 
-                ? dailyLimitValue : null;
+            const newLimit = dailyLimitEnabled && !isNaN(dailyLimitValue) ? dailyLimitValue : null;
+            if (newLimit !== this.settings.dailyLimit) {
+                if (!this.settings.limitHistory) this.settings.limitHistory = [];
+                if (newLimit !== null) {
+                    this.settings.limitHistory.push({ limit: newLimit, from: this._today() });
+                }
+                this.settings.dailyLimit = newLimit;
+            }
 
             this._persist('settings');
             this._toast('Settings saved <span class="ms ms-fill" style="color: var(--green);">check_small</span>');
@@ -2164,6 +2177,15 @@ class CigLogTracker {
         return longest;
     }
 
+    _getLimitForDate(dateStr) {
+        const history = this.settings.limitHistory || [];
+        if (!history.length) return this.settings.dailyLimit ?? null;
+        const active = [...history]
+            .filter(h => this._toDate(h.from) <= this._toDate(dateStr))
+            .sort((a, b) => this._toDate(b.from) - this._toDate(a.from));
+        return active.length ? active[0].limit : null;
+    }
+
     _computeTimeOfDay(entries) {
         // 2-hour bins: index 0 = midnight–2am, 11 = 10pm–midnight
         const cravings = new Array(12).fill(0);
@@ -2208,12 +2230,53 @@ class CigLogTracker {
             sentences.push(`${label} is your strongest smoking trigger (${Math.round(top.rate * 100)}% conversion).`);
         }
 
-        // Daily average
+        // Daily average — with or without limit comparison
         const totalSmoked = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
         const uniqueDays  = new Set(entries.map(e => e.date)).size;
         if (uniqueDays > 0 && totalSmoked > 0) {
             const avg = (totalSmoked / uniqueDays).toFixed(1);
-            sentences.push(`You average ${avg} cigarettes per day in this period.`);
+            const limitEntries = entries.filter(e => this._getLimitForDate(e.date) !== null);
+            if (limitEntries.length > 0) {
+                const weightedLimit = limitEntries.reduce((s, e) => s + this._getLimitForDate(e.date), 0) / limitEntries.length;
+                if (weightedLimit > 0) {
+                    const pct = Math.round(((parseFloat(avg) - weightedLimit) / weightedLimit) * 100);
+                    const dir = pct > 0 ? `${pct}% over` : `${Math.abs(pct)}% under`;
+                    sentences.push(`You average ${avg} cigs/day — ${dir} your limit.`);
+                } else {
+                    // Limit is 0 — quit attempt
+                    sentences.push(`You average ${avg} cigs/day against a limit of 0.`);
+                }
+            } else {
+                sentences.push(`You average ${avg} cigarettes per day in this period.`);
+            }
+        }
+
+        // Spending projection — minimum 7 days
+        const totalMoney = entries.reduce((s, e) => s + e.smoked.reduce((x, y) =>
+            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        if (uniqueDays >= 7 && totalMoney > 0) {
+            const yearlyProjection = Math.round((totalMoney / uniqueDays) * 365);
+            sentences.push(`At your current rate, you'll spend ${this.settings.currency}${yearlyProjection} on cigarettes this year.`);
+        }
+
+        // Smoking trend — minimum 14 days, linear regression
+        if (uniqueDays >= 14) {
+            const sorted = [...entries].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+            const n = sorted.length;
+            const yValues = sorted.map(e => e.smoked.reduce((s, x) => s + x.count, 0));
+            const yMean = yValues.reduce((s, v) => s + v, 0) / n;
+            const xMean = (n - 1) / 2;
+            let num = 0, den = 0;
+            yValues.forEach((y, i) => {
+                num += (i - xMean) * (y - yMean);
+                den += (i - xMean) ** 2;
+            });
+            const slope = den !== 0 ? num / den : 0;
+            const weeklySlope = Math.abs(slope * 7).toFixed(1);
+            if (Math.abs(slope) * 7 >= 0.2) {
+                const dir = slope > 0 ? 'up' : 'down';
+                sentences.push(`Smoking is trending ${dir} by ${weeklySlope} cigarettes per week.`);
+            }
         }
 
         // Worst day
@@ -2408,12 +2471,35 @@ class CigLogTracker {
         }
 
         // Daily limit stats
-        const limit = this.settings.dailyLimit;
-        const w7WithinLimit = limit !== null && limit !== undefined
-            ? last7.filter(e => e.smoked.reduce((s, x) => s + x.count, 0) <= limit).length : 0;
-        const p7WithinLimit = limit !== null && limit !== undefined
-            ? prev7.filter(e => e.smoked.reduce((s, x) => s + x.count, 0) <= limit).length : 0;
+        const w7WithinLimit = last7.filter(e => {
+            const dayLimit = this._getLimitForDate(e.date);
+            const effectiveLimit = (dayLimit !== null) ? dayLimit : (this.settings.dailyLimit ?? null);
+            if (effectiveLimit === null) return false;
+            const smoked = e.smoked.reduce((s, x) => s + x.count, 0);
+            return smoked <= effectiveLimit;
+        }).length;
 
+        const p7WithinLimit = prev7.filter(e => {
+            const dayLimit = this._getLimitForDate(e.date);
+            const effectiveLimit = (dayLimit !== null) ? dayLimit : (this.settings.dailyLimit ?? null);
+            if (effectiveLimit === null) return false;
+            const smoked = e.smoked.reduce((s, x) => s + x.count, 0);
+            return smoked <= effectiveLimit;
+        }).length;
+
+        // Check if any limit exists (current or historical)
+        const hasLimit = (this.settings.limitHistory && this.settings.limitHistory.length > 0) || 
+                        (this.settings.dailyLimit !== null && this.settings.dailyLimit !== undefined);
+
+        // Total cigarettes smoked over the limit (using per-day limits)
+        const overLimitCigs = last7.reduce((sum, e) => {
+            const dayLimit = this._getLimitForDate(e.date);
+            const effectiveLimit = (dayLimit !== null) ? dayLimit : (this.settings.dailyLimit ?? null);
+            if (effectiveLimit === null) return sum;
+            const smoked = e.smoked.reduce((s, x) => s + x.count, 0);
+            return sum + Math.max(0, smoked - effectiveLimit);
+        }, 0);
+                
         // Display values — show — when no data this week
         const resistedDisplay   = w7Cravings === 0 ? '—' : String(w7Resisted);
         const resRateDisplay    = w7ResRate === null ? '—' : `${w7ResRate}%`;
@@ -2457,7 +2543,7 @@ class CigLogTracker {
                     </div>
                 </div>
                                 
-                ${this.settings.dailyLimit !== null && this.settings.dailyLimit !== undefined ? `
+                ${hasLimit ? `
                     <div class="weekly-stat">
                         <div class="weekly-stat-label">Days Within Limit</div>
                         <div class="weekly-stat-value-row">
@@ -2466,7 +2552,7 @@ class CigLogTracker {
                     </div>
                     <div class="weekly-stat">
                         <div class="weekly-stat-label">Over Limit</div>
-                        <div class="weekly-stat-value">${(() => { const n = last7.filter(e => e.smoked.reduce((s, x) => s + x.count, 0) > limit).reduce((s, e) => s + Math.max(0, e.smoked.reduce((x, y) => x + y.count, 0) - limit), 0); return `${n} cig${n !== 1 ? 's' : ''}`; })()}</div>
+                        <div class="weekly-stat-value">${overLimitCigs} cig${overLimitCigs !== 1 ? 's' : ''}</div>
                     </div>
                 ` : ''}
 
