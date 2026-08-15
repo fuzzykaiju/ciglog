@@ -2398,7 +2398,7 @@ body.analytics-active .fixed-header {
 
 .roadmap-inProgress {
     color: var(--text-primary);
-    font-style: italic;
+    font-style: normal;
 }
 
 .roadmap-upcoming {

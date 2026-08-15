@@ -490,7 +490,8 @@ class CigLogTracker {
                 setupDate: new Date().toISOString(),
                 customTriggers: [],
                 dailyLimit: null,
-                limitHistory: []
+                limitHistory: [],
+                featuredHistory: {}
             };
             this._persist('settings');
             this.currencyInput.disabled = false;
@@ -2210,29 +2211,191 @@ class CigLogTracker {
         return { label: custom[ci] || id, icon: 'label' };
     }
 
-    // ── Insight sentences ─────────────────────────────────────────────────────
+    // Intensity Trend (Insight)
+    _computeIntensityTrend() {
+        const today = this._today();
+        const todayDt = this._toDate(today);
+        const d7 = new Date(todayDt);
+        d7.setDate(d7.getDate() - 6);
+        d7.setHours(0, 0, 0, 0);
+        const d14 = new Date(todayDt);
+        d14.setDate(d14.getDate() - 13);
+        d14.setHours(0, 0, 0, 0);
 
+        const last7 = this.entries.filter(e => {
+            const d = this._toDate(e.date);
+            return d >= d7 && d <= todayDt;
+        });
+        const prev7 = this.entries.filter(e => {
+            const d = this._toDate(e.date);
+            return d >= d14 && d < d7;
+        });
+
+        const countIntensities = (entries) => {
+            const counts = { low: 0, medium: 0, high: 0 };
+            entries.forEach(e => {
+                e.cravings.forEach(c => {
+                    if (c.intensity && counts[c.intensity] !== undefined) counts[c.intensity]++;
+                });
+            });
+            return counts;
+        };
+
+        const currCounts = countIntensities(last7);
+        const prevCounts = countIntensities(prev7);
+        const currTotal = currCounts.low + currCounts.medium + currCounts.high;
+        const prevTotal = prevCounts.low + prevCounts.medium + prevCounts.high;
+
+        if (currTotal < 5 || prevTotal < 3) return null;
+
+        const currHighPct = Math.round((currCounts.high / currTotal) * 100);
+        const prevHighPct = Math.round((prevCounts.high / prevTotal) * 100);
+        const shift = currHighPct - prevHighPct;
+
+        if (Math.abs(shift) < 5) return null;
+
+        const dir = shift > 0 ? 'up' : 'down';
+        return {
+            text: `This week, ${currHighPct}% of your cravings were High intensity – that's ${dir} from ${prevHighPct}% last week.`,
+            shift,
+        };
+    }
+
+    // Trigger + Intensity Association (Insight)
+    _computeTriggerIntensityInsight() {
+        const triggerData = {};
+        this.entries.forEach(e => {
+            e.cravings.forEach(c => {
+                const triggers = c.triggers || [];
+                const intensity = c.intensity;
+                if (!triggers.length || !intensity) return;
+                triggers.forEach(id => {
+                    if (!triggerData[id]) triggerData[id] = { total: 0, high: 0, low: 0 };
+                    triggerData[id].total++;
+                    if (intensity === 'high') triggerData[id].high++;
+                    if (intensity === 'low') triggerData[id].low++;
+                });
+            });
+        });
+
+        const eligible = Object.entries(triggerData)
+            .filter(([id, data]) => data.total >= 3)
+            .map(([id, data]) => ({
+                id,
+                total: data.total,
+                highPct: Math.round((data.high / data.total) * 100),
+                lowPct: Math.round((data.low / data.total) * 100),
+            }));
+
+        if (eligible.length < 2) return null;
+
+        const sortedByHigh = [...eligible].sort((a, b) => b.highPct - a.highPct);
+        const topHigh = sortedByHigh[0];
+        const bottomHigh = sortedByHigh[sortedByHigh.length - 1];
+
+        if (topHigh.highPct - bottomHigh.highPct < 20) return null;
+
+        const topLabel = this._triggerLabel(topHigh.id).label;
+        const bottomLabel = this._triggerLabel(bottomHigh.id).label;
+
+        let tail = '';
+        if (bottomHigh.lowPct >= 50) {
+            tail = `but ${bottomLabel} is usually Low (${bottomHigh.lowPct}% Low).`;
+        } else {
+            tail = `while ${bottomLabel} triggers High only ${bottomHigh.highPct}% of the time.`;
+        }
+
+        return `${topLabel} triggers High cravings ${topHigh.highPct}% of the time, ${tail}`;
+    }
+    
+    // Pick featured insight
+    _pickFeaturedInsight(sentences) {
+        if (!sentences || !sentences.length) return null;
+        this._cleanupFeaturedHistory(sentences);
+
+        const withDecay = sentences.map(s => ({
+            ...s,
+            effectivePriority: this._getDecayedPriority(s.text, s.priority ?? null),
+            lastFeatured: this.settings.featuredHistory?.[s.text] ?? null,
+        }));
+
+        withDecay.sort((a, b) => {
+            const aEff = a.effectivePriority ?? Infinity;
+            const bEff = b.effectivePriority ?? Infinity;
+            if (aEff !== bEff) return aEff - bEff;
+            const aTime = a.lastFeatured ?? 0;
+            const bTime = b.lastFeatured ?? 0;
+            if (aTime !== bTime) return aTime - bTime;
+            return a.text.localeCompare(b.text);
+        });
+
+        return withDecay[0]?.text || null;
+    }
+
+    // Decay helper with edge-case handling
+    _getDecayedPriority(sentence, basePriority) {
+        if (basePriority !== null && basePriority <= 3) return basePriority;
+        if (!this.settings.featuredHistory) return basePriority;
+        const lastFeatured = this.settings.featuredHistory[sentence];
+        if (!lastFeatured) return basePriority;
+
+        const hoursSince = (Date.now() - lastFeatured) / (1000 * 60 * 60);
+        let penalty = 0;
+        if (hoursSince < 24) penalty = 2;
+        else if (hoursSince < 72) penalty = 1;
+        if (basePriority === null) return null;
+        return basePriority + penalty;
+    }
+
+    // Clean up stale featuredHistory entries
+    _cleanupFeaturedHistory(currentSentences) {
+        if (!this.settings.featuredHistory) return;
+        const currentTexts = new Set(currentSentences.map(s => s.text));
+        let changed = false;
+        Object.keys(this.settings.featuredHistory).forEach(key => {
+            if (!currentTexts.has(key)) {
+                delete this.settings.featuredHistory[key];
+                changed = true;
+            }
+        });
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        Object.keys(this.settings.featuredHistory).forEach(key => {
+            if (this.settings.featuredHistory[key] < thirtyDaysAgo) {
+                delete this.settings.featuredHistory[key];
+                changed = true;
+            }
+        });
+        if (changed) this._persist('settings');
+    }
+
+    // Insight sentences
     _generateInsightSentences(entries, triggerStats) {
         const sentences = [];
         const tod = this._computeTimeOfDay(entries);
         const binLabels = this._todBinLabels();
 
-        // Peak smoking time
+        // 1. Peak smoking time (priority 6)
         const peakBin = tod.smoked.indexOf(Math.max(...tod.smoked));
         if (Math.max(...tod.smoked) > 0) {
-            sentences.push(`Most smoking occurs between ${binLabels[peakBin]}.`);
+            sentences.push({
+                text: `Most smoking occurs between ${binLabels[peakBin]}.`,
+                priority: 6,
+            });
         }
 
-        // Most dangerous trigger
+        // 2. Most dangerous trigger (priority 4)
         if (triggerStats.length > 0) {
             const top = triggerStats[0];
             const { label } = this._triggerLabel(top.id);
-            sentences.push(`${label} is your strongest smoking trigger (${Math.round(top.rate * 100)}% conversion).`);
+            sentences.push({
+                text: `${label} is your strongest smoking trigger (${Math.round(top.rate * 100)}% conversion).`,
+                priority: 4,
+            });
         }
 
-        // Daily average — with or without limit comparison
+        // 3. Daily average — with or without limit comparison
         const totalSmoked = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
-        const uniqueDays  = new Set(entries.map(e => e.date)).size;
+        const uniqueDays = new Set(entries.map(e => e.date)).size;
         if (uniqueDays > 0 && totalSmoked > 0) {
             const avg = (totalSmoked / uniqueDays).toFixed(1);
             const limitEntries = entries.filter(e => this._getLimitForDate(e.date) !== null);
@@ -2241,25 +2404,38 @@ class CigLogTracker {
                 if (weightedLimit > 0) {
                     const pct = Math.round(((parseFloat(avg) - weightedLimit) / weightedLimit) * 100);
                     const dir = pct > 0 ? `${pct}% over` : `${Math.abs(pct)}% under`;
-                    sentences.push(`You average ${avg} cigs/day — ${dir} your limit.`);
+                    // Priority 2 if over limit by 20% or more
+                    const priority = (pct >= 20) ? 2 : null;
+                    sentences.push({
+                        text: `You average ${avg} cigs/day — ${dir} your limit.`,
+                        priority,
+                    });
                 } else {
-                    // Limit is 0 — quit attempt
-                    sentences.push(`You average ${avg} cigs/day against a limit of 0.`);
+                    sentences.push({
+                        text: `You average ${avg} cigs/day against a limit of 0.`,
+                        priority: null,
+                    });
                 }
             } else {
-                sentences.push(`You average ${avg} cigarettes per day in this period.`);
+                sentences.push({
+                    text: `You average ${avg} cigarettes per day in this period.`,
+                    priority: null,
+                });
             }
         }
 
-        // Spending projection — minimum 7 days
+        // 4. Spending projection (priority 5)
         const totalMoney = entries.reduce((s, e) => s + e.smoked.reduce((x, y) =>
             x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
         if (uniqueDays >= 7 && totalMoney > 0) {
             const yearlyProjection = Math.round((totalMoney / uniqueDays) * 365);
-            sentences.push(`At your current rate, you'll spend ${this.settings.currency}${yearlyProjection} on cigarettes this year.`);
+            sentences.push({
+                text: `At your current rate, you'll spend ${this.settings.currency}${yearlyProjection} on cigarettes this year.`,
+                priority: 5,
+            });
         }
 
-        // Smoking trend — minimum 14 days, linear regression
+        // 5. Smoking trend (priority 1 if trending up)
         if (uniqueDays >= 14) {
             const sorted = [...entries].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
             const n = sorted.length;
@@ -2275,23 +2451,49 @@ class CigLogTracker {
             const weeklySlope = Math.abs(slope * 7).toFixed(1);
             if (Math.abs(slope) * 7 >= 0.2) {
                 const dir = slope > 0 ? 'up' : 'down';
-                sentences.push(`Smoking is trending ${dir} by ${weeklySlope} cigarettes per week.`);
+                const priority = (dir === 'up') ? 1 : null;
+                sentences.push({
+                    text: `Smoking is trending ${dir} by ${weeklySlope} cigarettes per week.`,
+                    priority,
+                });
             }
         }
 
-        // Worst day
+        // 6. Intensity Trend (priority 3 if high% shift > 10)
+        const intensityTrend = this._computeIntensityTrend();
+        if (intensityTrend) {
+            const priority = (Math.abs(intensityTrend.shift) > 10) ? 3 : null;
+            sentences.push({
+                text: intensityTrend.text,
+                priority,
+            });
+        }
+
+        // 7. Trigger + Intensity Association (no priority)
+        const triggerIntensity = this._computeTriggerIntensityInsight();
+        if (triggerIntensity) {
+            sentences.push({
+                text: triggerIntensity,
+                priority: null,
+            });
+        }
+
+        // 8. Worst day (no priority)
         const worst = entries.reduce((acc, e) => {
             const count = e.smoked.reduce((s, x) => s + x.count, 0);
             return count > acc.count ? { date: e.date, count } : acc;
         }, { date: null, count: 0 });
         if (worst.count > 0) {
-            sentences.push(`Highest single day was ${worst.count} cigarettes (${worst.date}).`);
+            sentences.push({
+                text: `Highest single day was ${worst.count} cigarettes (${worst.date}).`,
+                priority: null,
+            });
         }
 
         return sentences;
     }
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // Render
 
     _renderAnalytics() {
         const content = document.getElementById('analyticsContent');
@@ -2307,7 +2509,7 @@ class CigLogTracker {
         const pairStats    = this._computeTriggerPairStats(entries, 5);
         const sentences    = this._generateInsightSentences(entries, triggerStats);
         
-        // ── 1. Weekly summary (with delta comparison) ─────────────────────────
+        // 1. Weekly summary (with delta comparison)
         // Normalize to midnight to avoid time-of-day boundary drift
         // last7  = today and the 6 days before it (7 days total, inclusive)
         // prev7  = the 7 days before that (days 8–14 ago)
@@ -2500,7 +2702,7 @@ class CigLogTracker {
             return sum + Math.max(0, smoked - effectiveLimit);
         }, 0);
                 
-        // Display values — show — when no data this week
+        // Display values - show - when no data this week
         const resistedDisplay   = w7Cravings === 0 ? '—' : String(w7Resisted);
         const resRateDisplay    = w7ResRate === null ? '—' : `${w7ResRate}%`;
 
@@ -2585,7 +2787,7 @@ class CigLogTracker {
         content.appendChild(this._makeSection('date_range', 'Week in Review', null, weeklyBody,
             'Your weekly summary compared to the previous 7-day period.'));
 
-        // ── Monthly Calendar ──────────────────────────────────────────────────────
+        // Monthly Calendar
         const calMonthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
             .format(new Date(this._calYear, this._calMonth));
 
@@ -2603,7 +2805,7 @@ class CigLogTracker {
 
         this._renderMonthlyCalendar();
 
-        // ── Deep Dive divider + period selector ───────────────────────────────
+        // Deep Dive divider + period selector
         const deepDive = document.createElement('div');
         deepDive.className = 'analytics-deep-dive-header';
         deepDive.innerHTML = `
@@ -2629,7 +2831,7 @@ class CigLogTracker {
             this._renderAnalytics();
         });
 
-        // ── 2. Period Overview ─────────────────────────────────────────────────────────
+        // 2. Period Overview
         const periodSmoked  = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
         const periodMoney   = entries.reduce((s, e) => s + e.smoked.reduce((x, y) =>
             x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
@@ -2662,25 +2864,40 @@ class CigLogTracker {
         `, 'Totals for the selected Deep Dive period.'
         ));
 
-        // ── 3. Insights ───────────────────────────────────────────────────────
+        // 3. Insights
         let insightBody;
         if (!sentences.length) {
             insightBody = '<p class="analytics-empty">Keep logging to see behavioural insights.</p>';
         } else {
-            const [featured, ...secondary] = sentences;
-            const featuredHtml = `
+            const featuredText = this._pickFeaturedInsight(sentences);
+
+            if (featuredText) {
+                if (!this.settings.featuredHistory) this.settings.featuredHistory = {};
+                const lastTimestamp = this.settings.featuredHistory[featuredText];
+                const now = Date.now();
+                if (!lastTimestamp || (now - lastTimestamp) > 24 * 60 * 60 * 1000) {
+                    this.settings.featuredHistory[featuredText] = now;
+                    this._persist('settings');
+                }
+            }
+
+            const secondary = sentences.filter(s => s.text !== featuredText);
+
+            const featuredHtml = featuredText ? `
                 <div class="insight-item insight-featured">
-                    <span>${featured}</span>
-                </div>`;
+                    <span>${featuredText}</span>
+                </div>` : '';
+
             const secondaryHtml = secondary.map(s => `
                 <div class="insight-item insight-secondary">
-                    <span>${s}</span>
+                    <span>${s.text}</span>
                 </div>`).join('');
+
             insightBody = `<div class="insight-list">${featuredHtml}${secondaryHtml}</div>`;
         }
         content.appendChild(this._makeSection('lightbulb_2', 'Insights', null, insightBody, 'Behavioral insights based on your data in this period.'));
 
-        // ── 4. Trigger rankings (no bars — ranked text list) ──────────────────
+        // 4. Trigger rankings (no bars — ranked text list)
         let triggerBody;
         if (!triggerStats.length) {
             triggerBody = '<p class="analytics-empty">Not enough data yet — need at least 5 events per trigger. Keep logging to see rankings.</p>';
@@ -2702,7 +2919,7 @@ class CigLogTracker {
         content.appendChild(this._makeSection('equalizer', 'Trigger Rankings',
             null, triggerBody, 'Triggers ranked by how often they lead to smoking. Minimum 5 logged events per trigger.'));
 
-        // ── 5. Trigger pairs ──────────────────────────────────────────────────
+        // 5. Trigger pairs
         let pairBody;
         if (!pairStats.length) {
             pairBody = '<p class="analytics-empty">Need at least 5 events per trigger pair. Log entries with multiple triggers to unlock this section.</p>';
@@ -2724,7 +2941,7 @@ class CigLogTracker {
         }
         content.appendChild(this._makeSection('join', 'Trigger Combinations', null, pairBody, 'Trigger pairs that frequently appear together. Minimum 5 combined events.'));
 
-        // ── 6. Time of day ────────────────────────────────────────────────────
+        // 6. Time of day
         content.appendChild(this._makeSection('schedule', 'Time of Day',
             null, `
             <div class="analytics-chart-container">
@@ -2927,7 +3144,7 @@ class CigLogTracker {
 }
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// Boot
 document.addEventListener('DOMContentLoaded', () => {
     window.tracker = new CigLogTracker();
 });
