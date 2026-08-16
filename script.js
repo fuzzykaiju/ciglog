@@ -1,7 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────────────
-//  CigLog  —  Cigarette Logger
-// ─────────────────────────────────────────────────────────────────────────────
+//  CigLog - Cigarette Logger
 
+// --- Triggers ---
 const TRIGGERS = [
     // Physiological
     { id: 'aftermeal',   label: 'After Meal',  icon: 'lunch_dining',      group: 'physiological' },
@@ -42,6 +41,7 @@ const TRIGGERS = [
     { id: 'workbreak',   label: 'Work Break',   icon: 'work_history',    group: 'situational' },
 ];
 
+// --- Trigger groups ---
 const TRIGGER_GROUPS = [
     { key: 'physiological', label: 'Physiological' },
     { key: 'psychological', label: 'Psychological' },
@@ -51,7 +51,7 @@ const TRIGGER_GROUPS = [
 
 class CigLogTracker {
 
-    // ── Initialisation ────────────────────────────────────────────────────────
+    // --- Initialisation ---
 
     constructor() {
         this.settings    = JSON.parse(localStorage.getItem('ciglog_v1_settings')) || null;
@@ -439,7 +439,7 @@ class CigLogTracker {
         }, { passive: true });
     }
 
-    // ── Boot / setup flow ─────────────────────────────────────────────────────
+    // --- Boot / setup flow ---
 
     _boot() {
         if (!this.settings) {
@@ -614,7 +614,7 @@ class CigLogTracker {
     this._openModal('settings');
 }
 
-    // ── Date utilities ────────────────────────────────────────────────────────
+    // --- Date utilities ---
 
     _today() {
         // If we have a named timezone (legacy), use it
@@ -657,7 +657,7 @@ class CigLogTracker {
         return (hA * 60 + mA) - (hB * 60 + mB);
     }
 
-    // ── Entry helpers ─────────────────────────────────────────────────────────
+    // --- Entry helpers ---
 
     _blankEntry(date, skipped = false) {
         return { date, cravings: [], smoked: [], notes: '', skipped, clean: false };
@@ -750,7 +750,7 @@ class CigLogTracker {
         this._renderTable();
     }
 
-    // ── Trigger helpers ───────────────────────────────────────────────────────
+    // --- Trigger helpers ---
 
     _computeFrequentTriggers() {
         const counts = {};
@@ -834,9 +834,9 @@ class CigLogTracker {
             .map(c => c.dataset.triggerId);
     }
 
-    // ── Table rendering ───────────────────────────────────────────────────────
+    // --- Table rendering --- 
 
-    // ── MLL formatters ────────────────────────────────────────────────────────
+    // --- MLL formatters ---
 
     // For stats bar / tooltip: two largest units
     _fmtMLL(mins) {
@@ -948,7 +948,7 @@ class CigLogTracker {
         });
     }
 
-    // ── Add Craving modal ─────────────────────────────────────────────────────
+    // --- Add Craving modal ---
 
     _openAddCraving(date) {
         this.activeDate = date;
@@ -988,7 +988,7 @@ class CigLogTracker {
         this._renderTable();
     }
 
-    // ── Add Smoke modal ───────────────────────────────────────────────────────
+    // --- Add Smoke modal ---
 
     _openAddSmoke(date) {
         this.activeDate = date;
@@ -1060,7 +1060,7 @@ class CigLogTracker {
         this._startTimer();
     }
 
-    // ── Smart time presets ────────────────────────────────────────────────────
+    // --- Smart time presets ---
 
     _buildTimePresets(container, hhInput, mmInput, onChange) {
         const now     = new Date();
@@ -1094,7 +1094,7 @@ class CigLogTracker {
         });
     }
 
-    // ── Time input handling ───────────────────────────────────────────────────
+    // --- Time input handling ---
 
     _bindTimeInputs(hhInput, mmInput, onChange) {
         const onInput = (e) => {
@@ -1140,7 +1140,7 @@ class CigLogTracker {
         }
     }
 
-    // ── Info / timeline modal ─────────────────────────────────────────────────
+    // --- Info / timeline modal ---
 
     _openInfo(date) {
         this.activeDate = date;
@@ -1266,7 +1266,7 @@ class CigLogTracker {
         this._toast('Notes saved <span class="ms ms-fill" style="color: var(--green);">check_small</span>');
     }
 
-    // ── Edit-day modal ────────────────────────────────────────────────────────
+    // --- Edit-day modal ---
 
     _openEditDay(date) {
         this.activeDate = date;
@@ -1518,7 +1518,7 @@ class CigLogTracker {
         this._startTimer();
     }
 
-    // ── Chart ─────────────────────────────────────────────────────────────────
+    // --- Chart ---
 
     _chartStyle() {
         return {
@@ -1652,13 +1652,16 @@ class CigLogTracker {
         if (this.chart) { this.chart.destroy(); this.chart = null; }
     }
 
-    // ── Export / Import ───────────────────────────────────────────────────────
+    // --- Export / Import ---
 
     _exportCSV() {
         if (!this.entries.length) { this._toast('No data to export'); return; }
         const rows = ['Date,Time,Type,Intensity/Count,PricePerCigarette,Notes,Triggers'];
+
         this.entries.forEach(e => {
             const notes = `"${(e.notes || '').replace(/"/g, '""')}"`;
+
+            // --- Export normal events ---
             e.cravings.forEach(c => {
                 const triggers = (c.triggers || []).join(';');
                 rows.push([e.date, c.time, 'Craving', c.intensity, '', notes, `"${triggers}"`].join(','));
@@ -1668,15 +1671,33 @@ class CigLogTracker {
                 rows.push([e.date, s.time, 'Smoked', s.count,
                     s.pricePerCigarette ?? this.settings.cigarettePrice, notes, `"${triggers}"`].join(','));
             });
-        });
-        const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
-        const a   = Object.assign(document.createElement('a'), {
-            href: url, download: `ciglog_export_${new Date().toISOString().slice(0, 10)}.csv`,
-        });
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a); URL.revokeObjectURL(url);
-    }
 
+            // --- Export empty entries (clean, skipped, or plain empty) ---
+            if (e.cravings.length === 0 && e.smoked.length === 0) {
+                let type = '';
+                if (e.clean) type = 'Clean';
+                else if (e.skipped) type = 'Skipped';
+                else type = 'Empty'; // NEW: preserves unflagged empty days
+                rows.push([e.date, '', type, 0, '', notes, '']);
+            }
+        });
+
+        // --- Append settings block ---
+        const settingsJSON = JSON.stringify(this.settings);
+        const escapedSettings = settingsJSON.replace(/"/g, '""');
+        rows.push(`Settings,"${escapedSettings}"`);
+
+        const url = URL.createObjectURL(new Blob([rows.join('\n')], { type: 'text/csv' }));
+        const a = Object.assign(document.createElement('a'), {
+            href: url,
+            download: `ciglog_export_${new Date().toISOString().slice(0, 10)}.csv`,
+        });
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    
     _importCSV(source = 'settings') {
         const file = source === 'firstrun'
             ? this.csvFileFirstRun?.files[0]
@@ -1685,63 +1706,93 @@ class CigLogTracker {
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            // Step 1: Parse and validate BEFORE touching existing data
             let parsed;
             try {
-                const rows = e.target.result.split('\n').filter(r => r.trim());
-                if (rows.length < 2) { this._toast('Import failed: file appears empty or invalid. Your existing data is safe.'); return; }
+                const lines = e.target.result.split('\n').filter(r => r.trim());
+                if (lines.length < 2) {
+                    this._toast('Import failed: file appears empty or invalid.');
+                    return;
+                }
+
                 const byDate = {};
                 let validRows = 0;
-                for (let i = 1; i < rows.length; i++) {
-                    const cols = rows[i].split(',').map(s => s.trim());
+                let settingsImported = false;
+
+                for (let i = 0; i < lines.length; i++) {
+                    const cols = this._parseCSVLine(lines[i]);
+                    if (cols.length === 0) continue;
+
+                    // --- Check for Settings row ---
+                    if (cols[0].toLowerCase() === 'settings' && cols.length >= 2) {
+                        try {
+                            const importedSettings = JSON.parse(cols[1]);
+                            this.settings = { ...this.settings, ...importedSettings };
+                            this._persist('settings');
+                            settingsImported = true;
+                        } catch (err) {
+                            console.warn('Failed to parse settings row:', err);
+                        }
+                        continue;
+                    }
+
+                    // --- Parse row ---
                     const [date, time, type, value, price] = cols;
-                    if (!date || !time || !type) continue;
+                    if (!date || !type) continue; // date and type required
                     if (!/^\d{2}-\d{2}-\d{2}$/.test(date)) continue;
+
                     const t = type.toLowerCase();
+
+                    // --- Special types: Clean, Skipped, Empty (time can be empty) ---
+                    if (t === 'clean' || t === 'skipped' || t === 'empty') {
+                        if (!byDate[date]) byDate[date] = this._blankEntry(date);
+                        byDate[date].clean = (t === 'clean');
+                        byDate[date].skipped = (t === 'skipped');
+                        byDate[date].cravings = [];
+                        byDate[date].smoked = [];
+                        const notes = (cols[5] || '').replace(/^"|"$/g, '');
+                        if (notes) byDate[date].notes = notes;
+                        validRows++;
+                        continue;
+                    }
+
+                    // --- For normal craving/smoked, time is required ---
+                    if (!time) continue;
                     if (t !== 'craving' && t !== 'smoked') continue;
-                    // Notes in col 5, triggers in col 6 (optional)
-                    const notes    = (cols[5] || '').replace(/^"|"$/g, '');
-                    const trigRaw  = (cols[6] || '').replace(/^"|"$/g, '');
+
+                    const notes = (cols[5] || '').replace(/^"|"$/g, '');
+                    const trigRaw = (cols[6] || '').replace(/^"|"$/g, '');
                     const triggers = trigRaw ? trigRaw.split(';').filter(x => x.trim()) : [];
+
                     if (!byDate[date]) byDate[date] = this._blankEntry(date);
                     if (!byDate[date].notes && notes) byDate[date].notes = notes;
+
                     if (t === 'craving') {
                         byDate[date].cravings.push({ time, intensity: value.toLowerCase(), triggers });
                     } else {
                         byDate[date].smoked.push({
-                            time, count: parseInt(value) || 1,
+                            time,
+                            count: parseInt(value) || 1,
                             pricePerCigarette: parseFloat(price) || this.settings.cigarettePrice,
                             triggers,
                         });
                     }
                     validRows++;
                 }
-                if (validRows === 0) {
-                    this._toast('Import failed: no valid data found. Your existing data is safe.');
+
+                if (validRows === 0 && !settingsImported) {
+                    this._toast('Import failed: no valid data found.');
                     return;
                 }
+
                 parsed = Object.values(byDate).sort((a, b) => this._byDateDesc(a, b));
+
             } catch (err) {
-                this._toast('Import failed: file appears corrupt or invalid. Your existing data is safe.');
+                this._toast('Import failed: file appears corrupt or invalid.');
                 console.error(err);
                 return;
             }
 
-            // Step 2: If first run — no existing data, import directly
-            if (source === 'firstrun') {
-                this.entries = parsed;
-                this._persist('entries');
-                this._backfillSkippedDays();
-                this._ensureTodayExists();
-                this._closeModal('createToday');                
-                this._openModal('dailyLimit');
-                this._toast(`Imported ${parsed.length} days of data`);
-                // Reset file input
-                if (this.csvFileFirstRun) this.csvFileFirstRun.value = '';
-                return;
-            }
-
-            // Step 3: If existing data — show safety confirmation
+            // --- Proceed with import ---
             const doImport = () => {
                 this.entries = parsed;
                 this._persist('entries');
@@ -1750,22 +1801,34 @@ class CigLogTracker {
                 this._closeModal('settings');
                 this._renderTable();
                 this._startTimer();
+                if (document.getElementById('analyticsView').style.display !== 'none') {
+                    this._renderAnalytics();
+                }
                 this._toast(`Imported ${parsed.length} days of data`);
                 if (this.csvFileSettings) this.csvFileSettings.value = '';
             };
 
+            // --- First‑run import: skip backfill (data is complete) ---
+            if (source === 'firstrun') {
+                this.entries = parsed;
+                this._persist('entries');
+                // No backfill – imported data is complete
+                this._ensureTodayExists(); // still add today if missing
+                this._closeModal('createToday');
+                this._openModal('dailyLimit');
+                this._toast(`Imported ${parsed.length} days of data`);
+                if (this.csvFileFirstRun) this.csvFileFirstRun.value = '';
+                return;
+            }
+
+            // --- Existing data safety flow ---
             if (this.entries.length > 0) {
                 this._confirm(
                     'Import Data',
-                    `You have existing data. Importing will replace it permanently. Export a backup first?`,
-                    () => {
-                        // "Confirm" = Import Anyway
-                        doImport();
-                    }
+                    'You have existing data. Importing will replace it permanently. Export a backup first?',
+                    () => doImport()
                 );
-                // Override confirm button temporarily to also offer export
-                this.confirmOk.textContent = 'Import Anyway';                
-                // Offer export via a second confirm button swap
+                this.confirmOk.textContent = 'Import Anyway';
                 const exportAndContinue = () => {
                     this._exportCSV();
                     setTimeout(() => {
@@ -1779,9 +1842,7 @@ class CigLogTracker {
                         this.confirmCancel.textContent = 'Cancel';
                     }, 500);
                 };
-                // Replace cancel with Export & Continue temporarily
                 this.confirmCancel.textContent = 'Export & Continue';
-                const origCancelCb = () => this._closeModal('confirm');
                 this.confirmCancel.onclick = (e) => {
                     e.stopImmediatePropagation();
                     this._closeModal('confirm');
@@ -1794,7 +1855,7 @@ class CigLogTracker {
         reader.readAsText(file);
     }
 
-    // ── Modal management ──────────────────────────────────────────────────────
+    // --- Modal management ---
 
     _openModal(key) {
         this.modals[key].style.display = 'block';
@@ -1823,7 +1884,7 @@ class CigLogTracker {
     _openMenu()  { this.sideMenu.style.right = '0'; this.menuOverlay.style.display = 'block'; }
     _closeMenu() { this.sideMenu.style.right = '-300px'; this.menuOverlay.style.display = 'none'; }
 
-    // ── Reset ─────────────────────────────────────────────────────────────────
+    // --- Reset ---
 
     _doReset() {
         this._closeModal('reset');
@@ -1839,7 +1900,7 @@ class CigLogTracker {
         this._boot();
     }
 
-    // ── Last-smoked timer ─────────────────────────────────────────────────────
+    // --- Last-smoked timer ---
 
     _findLastSmoked() {
         let latest = null;
@@ -1959,13 +2020,13 @@ class CigLogTracker {
         }
     }
 
-    // Finish Onboarding
+    // --- Finish Onboarding ---
     _finishOnboarding() {
         this._renderTable();
         this._startTimer();
     }
 
-    // ── README modal ──────────────────────────────────────────────────────────
+    // --- README modal ---
 
     _openReadme() {
         const body = document.getElementById('readmeBody');
@@ -1985,7 +2046,7 @@ class CigLogTracker {
             });
     }
 
-    // ── Changelog modal ───────────────────────────────────────────────────────
+    // --- Changelog modal ---
 
     _openChangelog() {
         const body = document.getElementById('changelogBody');
@@ -1995,7 +2056,7 @@ class CigLogTracker {
             .catch(() => { body.innerHTML = '<p>Error loading changelog.</p>'; this._openModal('changelog'); });
     }
 
-    // ── Roadmap modal ─────────────────────────────────────────────────────────
+    // --- Roadmap modal ---
 
     _openRoadmap() {
         const body = document.getElementById('roadmapBody');
@@ -2005,7 +2066,7 @@ class CigLogTracker {
             .catch(() => { body.innerHTML = '<p>Error loading roadmap.</p>'; this._openModal('roadmap'); });
     }
 
-    // ── Toast & Confirm ───────────────────────────────────────────────────────
+    // --- Toast & Confirm ---
 
     _toast(msg, ms = 2200) {
         this.toast.innerHTML = msg;
@@ -2025,7 +2086,7 @@ class CigLogTracker {
         this._openModal('confirm');
     }
 
-    // ── Persistence ───────────────────────────────────────────────────────────
+    // --- Persistence ---
 
     _persist(what) {
         if (what === 'entries' || what === 'all')
@@ -2034,7 +2095,38 @@ class CigLogTracker {
             localStorage.setItem('ciglog_v1_settings', JSON.stringify(this.settings));
     }
 
-    // ── Analytics View ────────────────────────────────────────────────────────
+    // --- CSV line parser ---
+    _parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let insideQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const ch = line[i];
+            if (insideQuotes) {
+                if (ch === '"' && i + 1 < line.length && line[i + 1] === '"') {
+                    current += '"';
+                    i++; // skip escaped quote
+                } else if (ch === '"') {
+                    insideQuotes = false;
+                } else {
+                    current += ch;
+                }
+            } else {
+                if (ch === ',') {
+                    result.push(current.trim());
+                    current = '';
+                } else if (ch === '"') {
+                    insideQuotes = true;
+                } else {
+                    current += ch;
+                }
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+
+    // --- Analytics View ---
 
     _showAnalyticsView() {
         document.querySelector('.main-content').style.display = 'none';
@@ -2074,7 +2166,7 @@ class CigLogTracker {
             .sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
     }
 
-    // ── Data helpers ──────────────────────────────────────────────────────────
+    // --- Data helpers ---
 
     _computeTriggerStats(entries, minCount = 5) {
         const stats = {}; // id → { cravings, smoked }
@@ -2368,7 +2460,7 @@ class CigLogTracker {
         if (changed) this._persist('settings');
     }
 
-    // Insight sentences
+    // --- Insight sentences ---
     _generateInsightSentences(entries, triggerStats) {
         const sentences = [];
         const tod = this._computeTimeOfDay(entries);
@@ -2485,7 +2577,7 @@ class CigLogTracker {
         }, { date: null, count: 0 });
         if (worst.count > 0) {
             sentences.push({
-                text: `Highest single day was ${worst.count} cigarettes (${worst.date}).`,
+                text: `Highest single day was ${worst.count} cigarette${worst.count !== 1 ? 's' : ''} (${worst.date}).`,
                 priority: null,
             });
         }
@@ -2493,7 +2585,7 @@ class CigLogTracker {
         return sentences;
     }
 
-    // Render
+    // --- Render ---
 
     _renderAnalytics() {
         const content = document.getElementById('analyticsContent');
@@ -2526,6 +2618,10 @@ class CigLogTracker {
             return d >= d14 && d < d7;
         });
 
+        // 14‑day threshold for deltas
+        const totalLoggedDays = last7.length + prev7.length;
+        const hasEnoughData = totalLoggedDays >= 14;
+
         const w7Smoked       = last7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
         const w7Cravings     = last7.reduce((s, e) => s + e.cravings.length, 0);
         // Use cigarette COUNT (not entry count) so logging 3 cigs in one entry counts as 3
@@ -2544,11 +2640,10 @@ class CigLogTracker {
         const p7Resisted     = Math.max(0, p7Cravings - p7Smoked);
         const p7ResRate      = p7Cravings > 0
             ? Math.round((p7Resisted / p7Cravings) * 100) : null;
-        const hasPrevData    = prev7.length > 0 && (p7Smoked + p7Cravings) > 0;
 
         // Delta helper — returns bracket HTML or empty string
         const _delta = (curr, prev, lowerIsBetter = true) => {
-            if (!hasPrevData) return '';            
+            if (!hasEnoughData) return '';            
             if (prev === 0) return '';
             const pct = Math.round(((curr - prev) / prev) * 100);
             if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
@@ -2561,7 +2656,7 @@ class CigLogTracker {
         
         // Delta arrow helper — returns just an arrow HTML or empty string
         const _deltaArrow = (curr, prev, lowerIsBetter = true) => {
-            if (!hasPrevData || prev === 0) return '';
+            if (!hasEnoughData || prev === 0) return '';
             const isGood = lowerIsBetter ? curr < prev : curr > prev;
             const arrow = curr < prev ? '↓' : curr > prev ? '↑' : '';
             if (!arrow) return '';
@@ -2571,7 +2666,7 @@ class CigLogTracker {
 
         // Resistance rate delta — relative % change, higher is better
         const resRateDelta = (() => {
-            if (!hasPrevData || w7ResRate === null || p7ResRate === null || p7ResRate === 0) return '';
+            if (!hasEnoughData || w7ResRate === null || p7ResRate === null || p7ResRate === 0) return '';
             const pct = Math.round(((w7ResRate - p7ResRate) / p7ResRate) * 100);
             if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
             const arrow = pct > 0 ? '↑' : '↓';
@@ -2783,6 +2878,7 @@ class CigLogTracker {
                     <div class="weekly-stat-value">${strongestEntries.length ? strongestEntries.map(e => `<span class="ms">${e.icon}</span> ${e.label}`).join(', ') : '—'}</div>
                 </div>
                 ${last7.length < 7 ? `<p class="weekly-comparison-note">Based on ${last7.length} day${last7.length !== 1 ? 's' : ''} of logged data.</p>` : ''}
+                ${!hasEnoughData ? `<p class="weekly-comparison-note">Delta comparison requires at least 14 days of logged data across both weeks.</p>` : ''}
             </div>`;
         content.appendChild(this._makeSection('date_range', 'Week in Review', null, weeklyBody,
             'Your weekly summary compared to the previous 7-day period.'));
@@ -3144,7 +3240,7 @@ class CigLogTracker {
 }
 }
 
-// Boot
+// --- Boot ---
 document.addEventListener('DOMContentLoaded', () => {
     window.tracker = new CigLogTracker();
 });
