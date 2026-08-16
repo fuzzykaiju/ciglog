@@ -238,6 +238,9 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 24px;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
 }
 
 /* Date cell */
@@ -486,7 +489,7 @@ body {
 
 /* Modal Body */
 .modal-body {
-    padding: 20px;
+    padding: 8px 16px;
 }
 
 .welcome-text {
@@ -497,10 +500,10 @@ body {
 
 /* Form Styles */
 .form-group {
-    padding: 15px 20px;
+    padding: 4px 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
 }
 
@@ -509,7 +512,7 @@ body {
     font-weight: bold;
     width: 100%;
     text-align: center;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
 }
 
 .form-group input,
@@ -545,18 +548,24 @@ input[type="number"] {
     box-shadow: 0 0 0 2px rgba(217, 217, 217, 0.12);
 }
 
+/* Reduce space below count input in smoke/smart modals */
+#addSmokeModal .form-group:has(#cigaretteCount),
+#smartModal .form-group:has(#smartCount) {
+    padding-bottom: 0px;
+}
+
 /* Smart Time Defaults */
 .smart-time-defaults {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
-    margin-bottom: 12px;
+    margin-bottom: 4px;
     width: 100%;
     max-width: 300px;
 }
 
 .time-btn {
-    padding: 8px 4px;
+    padding: 12px 4px;
     background-color: var(--bg-secondary);
     border: 1px solid rgba(217, 217, 217, 0.25);
     border-radius: 6px;
@@ -586,7 +595,7 @@ input[type="number"] {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     width: 100%;
     max-width: 300px;
 }
@@ -646,13 +655,14 @@ input[type="number"] {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 10px 8px;
+    padding: 8px 8px;
     background-color: var(--bg-secondary);
     border: 1px solid rgba(217, 217, 217, 0.25);
     border-radius: 8px;
     cursor: pointer;
     transition: filter 0.2s, transform 0.2s;
     flex: 1;
+    margin-bottom: 6px;
 }
 
 .intensity-btn i {
@@ -693,8 +703,7 @@ input[type="number"] {
 
 /* Form Actions */
 .form-actions {
-    padding: 20px;
-    padding-top: 10px;
+    padding: 10px 16px 8px 16px;
     display: flex;
     flex-direction: row;
     gap: 10px;
@@ -937,7 +946,7 @@ input[type="number"] {
     font-size: 0.85rem;
     cursor: pointer;
     transition: filter 0.2s;
-    margin-top: 4px;
+    margin-top: 0;
 }
 
 .trigger-toggle-btn:hover { filter: brightness(1.15); }
@@ -1485,7 +1494,7 @@ input[type="number"] {
     padding: 0;
     background-color: var(--bg-secondary);
     border-radius: 8px;
-    margin-top: 14px;
+    margin-top: 8px;
     border: 1px solid rgba(217,217,217,0.1);
 }
 
@@ -1494,9 +1503,9 @@ input[type="number"] {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 2px;
     text-align: center;
-    padding: 10px 8px;
+    padding: 6px 8px;
 }
 
 .stat-item:nth-child(1),

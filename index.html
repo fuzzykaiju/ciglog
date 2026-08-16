@@ -237,7 +237,7 @@
                     </button>
                 </div>
                 <div class="form-actions">
-                    <button id="saveCraving" class="btn btn-primary" disabled>Save Craving</button>
+                    <button id="saveCraving" class="btn btn-primary" disabled>Save</button>
                 </div>
             </div>
         </div>
@@ -283,6 +283,64 @@
             </div>
         </div>
     </div>
+
+        <!-- Smart Logging Modal -->
+        <div id="smartModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="smartTitle"></h2>
+                    <button class="close-btn close-smart"><span class="ms">close</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Time:</label>
+                        <div id="smartLogTimeDefaults" class="smart-time-defaults"></div>
+                        <div class="custom-time-input">
+                            <span>Custom Time:</span>
+                            <div class="time-input-group">
+                                <input type="text" inputmode="numeric" id="smartHH" maxlength="2" placeholder="HH">
+                                <span>:</span>
+                                <input type="text" inputmode="numeric" id="smartMM" maxlength="2" placeholder="MM">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Craving Intensity:</label>
+                        <div class="intensity-selector" id="smartIntensitySelector">
+                            <button class="intensity-btn low" data-intensity="low">
+                                <span class="ms ms-fill" style="color:var(--low-intensity);">circle</span>
+                                <span class="intensity-label">Low</span>
+                            </button>
+                            <button class="intensity-btn medium" data-intensity="medium">
+                                <span class="ms ms-fill" style="color:var(--medium-intensity);">circle</span>
+                                <span class="intensity-label">Mid</span>
+                            </button>
+                            <button class="intensity-btn high" data-intensity="high">
+                                <span class="ms ms-fill" style="color:var(--high-intensity);">circle</span>
+                                <span class="intensity-label">High</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Cigarettes Smoked:</label>
+                        <input type="number" id="smartCount" min="1" step="1" value="1" style="width:80px;text-align:center;padding:10px;background:var(--bg-secondary);border:1px solid rgba(217,217,217,0.25);border-radius:8px;color:var(--text-primary);font-family:inherit;font-size:1.1rem;">
+                    </div>
+                    <div class="form-group">
+                        <button class="trigger-toggle-btn" id="smartCopyTriggerBtn" style="display:none;">
+                            <span class="ms ms-fill">bolt</span> Copy triggers from last craving
+                        </button>
+                    </div>
+                    <div class="form-group">
+                        <button class="trigger-toggle-btn" id="smartTriggerToggle">
+                            <span class="ms ms-fill">bolt</span> Add Trigger
+                        </button>
+                    </div>
+                    <div class="form-actions">
+                        <button id="saveSmart" class="btn btn-primary" disabled>Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     <!-- Info/Timeline Modal -->
     <div id="infoModal" class="modal">
@@ -428,9 +486,9 @@
             <div class="modal-body about-body">
                 <h3><span class="ms">deployed_code</span> Code</h3>
                 <p>
-                    Version: <code>1.3.7</code><br>
-                    Build date: <code>16-08-2026</code><br>
-                    Service worker cache: <code>ciglog-v26</code><br>
+                    Version: <code>1.4.0</code><br>
+                    Build date: <code>17-08-2026</code><br>
+                    Service worker cache: <code>ciglog-v27</code><br>
                     Storage schema: <code>ciglog_v1</code>
                 </p>                    
                 <h3><span class="ms">spoke</span> Dependencies</h3>

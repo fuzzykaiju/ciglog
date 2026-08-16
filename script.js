@@ -82,6 +82,7 @@ class CigLogTracker {
             dailyLimit:  $('dailyLimitModal'),
             addCraving:  $('addCravingModal'),
             addSmoke:    $('addSmokeModal'),
+            smart:       $('smartModal'),
             info:        $('infoModal'),
             editDay:     $('editDayModal'),
             editTrigger: $('editTriggerModal'),
@@ -129,6 +130,17 @@ class CigLogTracker {
         this.cigaretteCount    = $('cigaretteCount');
         this.saveSmokeBtn      = $('saveSmoke');
 
+        // Smart modal
+        this.smartTitle = $('smartTitle');
+        this.smartLogTimeDefaults = $('smartLogTimeDefaults');
+        this.smartHH = $('smartHH');
+        this.smartMM = $('smartMM');
+        this.smartCount = $('smartCount');
+        this.saveSmartBtn = $('saveSmart');
+        this.smartCopyTriggerBtn = $('smartCopyTriggerBtn');
+        this.smartTriggerToggle = $('smartTriggerToggle');
+        this.smartIntensitySelector = $('smartIntensitySelector');
+
         // Info/timeline modal
         this.infoTitle       = $('infoTitle');
         this.timelineContent = $('timelineContent');
@@ -157,6 +169,7 @@ class CigLogTracker {
         this.smokeTriggerToggle    = $('smokeTriggerToggle');
         this._pendingCravingTriggers = [];
         this._pendingSmokeTriggers   = [];
+        this._pendingSmartTriggers = [];
         this._triggerModalSource     = null;
         this._activeTriggerPopover   = null;
         
@@ -347,6 +360,32 @@ class CigLogTracker {
             const v = parseInt(this.cigaretteCount.value);
             if (!isNaN(v) && v < 1) this.cigaretteCount.value = 1;
             this._updateSaveBtn('smoke');
+        });
+
+        // Smart modal
+        document.querySelector('.close-smart').addEventListener('click', () => this._closeModal('smart'));
+        this.saveSmartBtn.addEventListener('click', () => this._saveSmart());
+        this._bindTimeInputs(this.smartHH, this.smartMM, () => this._updateSmartSaveBtn());
+        this.smartCount.addEventListener('input', () => {
+            const v = parseInt(this.smartCount.value);
+            if (!isNaN(v) && v < 1) this.smartCount.value = 1;
+            this._updateSmartSaveBtn();
+        });
+        this.smartTriggerToggle.addEventListener('click', () => {
+            this._openGlobalTriggerModal('smart', this._pendingSmartTriggers);
+        });
+        this.smartCopyTriggerBtn.addEventListener('click', () => {
+            this._pendingSmartTriggers = [...this._recentCravingTriggers];
+            const label = this._pendingSmartTriggers.length + ' trigger' + (this._pendingSmartTriggers.length > 1 ? 's' : '') + ' copied';
+            this.smartTriggerToggle.innerHTML = `<span class="ms ms-fill">bolt</span> ${label}`;
+            this.smartCopyTriggerBtn.style.display = 'none';
+        });
+        document.querySelectorAll('#smartIntensitySelector .intensity-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('#smartIntensitySelector .intensity-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                this._updateSmartSaveBtn();
+            });
         });
 
         // Info modal
@@ -924,18 +963,67 @@ class CigLogTracker {
         const help = document.createElement('div');
         help.className = 'help-row';
         help.innerHTML = `
-            <p>• Tap <span class="ms">sentiment_frustrated</span> or <span class="ms">smoking_rooms</span> in a row to log a craving or cigarette</p>
-            <p>• Tap <span class="ms">keyboard_arrow_down</span> to view the day's timeline &amp; notes</p>
-            <p>• Tap <span class="ms">more_vert</span> to edit or delete entries</p>
+            <p>• Tap <span class="ms">sentiment_frustrated</span> to log cravings</p>
+            <p>• Tap <span class="ms">smoking_rooms</span> to log smokes</p>
+            <p>• Long press <span class="ms">smoking_rooms</span> to log both</p>
+            <p>• Tap <span class="ms">keyboard_arrow_down</span> to view timeline</p>
+            <p>• Tap <span class="ms">more_vert</span> to edit entries</p>
             <p>• Tap <span class="ms">warning</span> on skipped days for more actions</p>`;
         this.entriesTable.appendChild(help);
 
         // Row event listeners
         this.entriesTable.querySelectorAll('.entry-cell[data-type]').forEach(cell => {
             cell.addEventListener('click', () => {
+                // Check if a long press was triggered on this cell
+                if (cell.dataset.longPress === 'true') {
+                    cell.dataset.longPress = 'false';
+                    return;
+                }
                 if (cell.dataset.type === 'craving') this._openAddCraving(cell.dataset.date);
-                else                                  this._openAddSmoke(cell.dataset.date);
+                else this._openAddSmoke(cell.dataset.date);
             });
+        });
+        // Long press on smoke cell -> Smart Logging modal
+        this.entriesTable.querySelectorAll('.entry-cell[data-type="smoke"]').forEach(cell => {
+            const date = cell.dataset.date;
+            let longPressTimer = null;
+
+            const startTimer = () => {
+                cell.dataset.longPress = 'false';
+                longPressTimer = setTimeout(() => {
+                    cell.dataset.longPress = 'true';
+                    this._openSmartModal(date);
+                }, 500);
+            };
+
+            const cancelTimer = () => {
+                clearTimeout(longPressTimer);
+            };
+
+            const endTimer = (e) => {
+                clearTimeout(longPressTimer);
+                if (cell.dataset.longPress === 'true') {
+                    // Prevent click event from firing
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Reset after a brief delay to allow click to be blocked
+                    setTimeout(() => { cell.dataset.longPress = 'false'; }, 100);
+                }
+            };
+
+            // Mobile touch events
+            cell.addEventListener('touchstart', startTimer, { passive: true });
+            cell.addEventListener('touchmove', cancelTimer, { passive: true });
+            cell.addEventListener('touchend', endTimer, { passive: false }); // passive: false to allow preventDefault
+            cell.addEventListener('touchcancel', cancelTimer, { passive: true });
+
+            // Desktop mouse events
+            cell.addEventListener('mousedown', startTimer);
+            cell.addEventListener('mouseup', endTimer);
+            cell.addEventListener('mouseleave', cancelTimer);
+
+            // Prevent context menu on long press
+            cell.addEventListener('contextmenu', (e) => e.preventDefault());
         });
         this.entriesTable.querySelectorAll('.info-btn:not(.skipped-btn)').forEach(btn => {
             btn.addEventListener('click', (e) => { e.stopPropagation(); this._openInfo(btn.dataset.date); });
@@ -952,7 +1040,7 @@ class CigLogTracker {
 
     _openAddCraving(date) {
         this.activeDate = date;
-        this.cravingTitle.innerHTML = `Add Craving<br><span class="modal-subtitle">${date}</span>`;
+        this.cravingTitle.innerHTML = `Log Craving<br><span class="modal-subtitle">${date}</span>`;
         document.querySelectorAll('.intensity-btn, .time-btn').forEach(b => b.classList.remove('selected'));
         this.cravingHH.value = '';
         this.cravingMM.value = '';
@@ -992,7 +1080,7 @@ class CigLogTracker {
 
     _openAddSmoke(date) {
         this.activeDate = date;
-        this.smokeTitle.innerHTML = `Log Cigarette<br><span class="modal-subtitle">${date}</span>`;
+        this.smokeTitle.innerHTML = `Log Smoke<br><span class="modal-subtitle">${date}</span>`;
         document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
         this.smokeHH.value = '';
         this.smokeMM.value = '';
@@ -1034,6 +1122,140 @@ class CigLogTracker {
             this.smokeTimeDefaults.innerHTML = '<p style="grid-column:1/-1;text-align:center;">Enter time manually for past dates</p>';
         }
         this._openModal('addSmoke');
+    }
+
+    // --- Smart Logging Modal ---
+
+    _openSmartModal(date) {
+        this.activeDate = date;
+        this.smartTitle.innerHTML = `Log Both<br><span class="modal-subtitle">${date}</span>`;
+        // Reset form
+        document.querySelectorAll('#smartIntensitySelector .intensity-btn, .time-btn').forEach(b => b.classList.remove('selected'));
+        this.smartHH.value = '';
+        this.smartMM.value = '';
+        this.smartCount.value = '1';
+        this.saveSmartBtn.disabled = true;
+        this._pendingSmartTriggers = [];
+        this.smartTriggerToggle.innerHTML = '<span class="ms ms-fill">bolt</span> Add Trigger';
+        this.smartCopyTriggerBtn.style.display = 'none';
+
+        // Check for recent craving with triggers (for carry-over)
+        this._recentCravingTriggers = [];
+        const entry = this._getEntry(date);
+        if (entry && entry.cravings.length) {
+            const now = new Date();
+            const recentCraving = [...entry.cravings]
+                .sort((a, b) => this._byTimeAsc(b, a))
+                .find(c => {
+                    const [hh, mm] = c.time.split(':').map(Number);
+                    const cravingTime = new Date();
+                    cravingTime.setHours(hh, mm, 0, 0);
+                    const diffMin = (now - cravingTime) / 60000;
+                    return diffMin >= 0 && diffMin <= 30 && (c.triggers || []).length > 0;
+                });
+            if (recentCraving) {
+                this._recentCravingTriggers = recentCraving.triggers;
+            }
+        }
+        if (this._recentCravingTriggers.length) {
+            this.smartCopyTriggerBtn.style.display = 'flex';
+        }
+
+        // Time presets
+        if (date === this._today()) {
+            this._buildTimePresets(this.smartLogTimeDefaults, this.smartHH, this.smartMM,
+                () => this._updateSmartSaveBtn());
+        } else {
+            this.smartLogTimeDefaults.innerHTML = '<p style="grid-column:1/-1;text-align:center;">Enter time manually for past dates</p>';
+        }
+
+        this._openModal('smart');
+    }
+
+    _saveSmart() {
+        const hh = this.smartHH.value.padStart(2, '0');
+        const mm = this.smartMM.value.padStart(2, '0');
+        const time = `${hh}:${mm}`;
+        const count = parseInt(this.smartCount.value) || 1;
+        const intensityBtn = document.querySelector('#smartIntensitySelector .intensity-btn.selected');
+        if (!this._timeOk(this.smartHH, this.smartMM) || !intensityBtn) {
+            this._toast('Please enter a valid time and select intensity');
+            return;
+        }
+        const idx = this._getEntryIdx(this.activeDate);
+        if (idx === -1) { this._toast('Error: entry not found'); return; }
+
+        // Check for linkable craving within 30 minutes
+        const linkableCraving = this._findLinkableCraving(this.activeDate, time);
+        const triggers = this._pendingSmartTriggers || [];
+
+        if (linkableCraving) {
+            // Link to existing craving – no new craving
+            this.entries[idx].smoked.push({
+                time,
+                count,
+                pricePerCigarette: this.settings.cigarettePrice,
+                triggers,
+            });
+            this.entries[idx].smoked.sort((a, b) => this._byTimeAsc(a, b));
+            if (this.entries[idx].skipped) this.entries[idx].skipped = false;
+            this._persist('entries');
+            this._closeModal('smart');
+            this._renderTable();
+            this._startTimer();
+            this._toast('Smoke linked to existing craving.');
+            return;
+        }
+
+        // No linkable craving – create both
+        const intensity = intensityBtn.dataset.intensity;
+        this.entries[idx].cravings.push({ time, intensity, triggers, isLinked: false });
+        this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
+        this.entries[idx].smoked.push({
+            time,
+            count,
+            pricePerCigarette: this.settings.cigarettePrice,
+            triggers,
+        });
+        this.entries[idx].smoked.sort((a, b) => this._byTimeAsc(a, b));
+        if (this.entries[idx].skipped) this.entries[idx].skipped = false;
+        this._persist('entries');
+        this._closeModal('smart');
+        this._renderTable();
+        this._startTimer();
+        this._toast('Craving & Smoke logged.');
+    }
+
+    _findLinkableCraving(date, time) {
+        const entry = this._getEntry(date);
+        if (!entry) return null;
+        const [hh, mm] = time.split(':').map(Number);
+        const targetMinutes = hh * 60 + mm;
+
+        const candidates = entry.cravings.filter(c => {
+            const [cH, cM] = c.time.split(':').map(Number);
+            const cMinutes = cH * 60 + cM;
+            const diff = Math.abs(targetMinutes - cMinutes);
+            return diff <= 30;
+        });
+        if (candidates.length === 0) return null;
+        candidates.sort((a, b) => {
+            const [aH, aM] = a.time.split(':').map(Number);
+            const aMin = aH * 60 + aM;
+            const [bH, bM] = b.time.split(':').map(Number);
+            const bMin = bH * 60 + bM;
+            return Math.abs(targetMinutes - aMin) - Math.abs(targetMinutes - bMin);
+        });
+        return candidates[0];
+    }
+
+    _updateSmartSaveBtn() {
+        const timeOk = this._timeOk(this.smartHH, this.smartMM);
+        const countVal = this.smartCount.value.trim();
+        const count = parseInt(countVal);
+        const countOk = countVal !== '' && !isNaN(count) && count >= 1;
+        const intensityOk = document.querySelector('#smartIntensitySelector .intensity-btn.selected') !== null;
+        this.saveSmartBtn.disabled = !(timeOk && countOk && intensityOk);
     }
 
     _saveSmoke() {
@@ -1376,6 +1598,10 @@ class CigLogTracker {
             this._pendingSmokeTriggers = selected;
             const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
             this.smokeTriggerToggle.innerHTML = `<span class="ms ms-fill">bolt</span> ${label}`;
+        } else if (source === 'smart') {      // <-- ADD THIS BLOCK
+            this._pendingSmartTriggers = selected;
+            const label = selected.length ? `${selected.length} trigger${selected.length > 1 ? 's' : ''}` : 'Add Trigger';
+            this.smartTriggerToggle.innerHTML = `<span class="ms ms-fill">bolt</span> ${label}`;
         } else if (source && typeof source === 'object') {
             // Edit modal row element
             source.dataset.triggers = JSON.stringify(selected);
