@@ -2873,7 +2873,7 @@ class CigLogTracker {
         const lastLimit = this._getLimitForDate(lastEntry.date);
         const lastSmoked = lastEntry.smoked.reduce((s, x) => s + x.count, 0);
         const isActive = !lastEntry.skipped && lastLimit !== null && lastSmoked <= lastLimit;
-        if (!isActive || currentStreak === 0) return null;
+        if (!isActive || currentStreak < 2) return null;
 
         const allTimeBest = Math.max(...runs);
         const T = INSIGHT_THRESHOLDS.dailyLimitStreak;
@@ -2959,7 +2959,7 @@ class CigLogTracker {
         const lastEntry = sortedEntries[sortedEntries.length - 1];
         const lastSmoked = lastEntry.smoked.reduce((s, x) => s + x.count, 0);
         const isActive = !lastEntry.skipped && lastSmoked === 0;
-        if (!isActive || currentStreak === 0) return null;
+        if (!isActive || currentStreak < 2) return null;
 
         const allTimeBest = Math.max(...runs);
         const T = INSIGHT_THRESHOLDS.personalBestClean;
@@ -3498,8 +3498,6 @@ class CigLogTracker {
                     <div class="weekly-stat-label">Most Associated with Smoking</div>
                     <div class="weekly-stat-value">${strongestEntries.length ? strongestEntries.map(e => `<span class="ms">${e.icon}</span> ${e.label}`).join(', ') : '—'}</div>
                 </div>
-                ${last7.length < 7 ? `<p class="weekly-comparison-note">Based on ${last7.length} day${last7.length !== 1 ? 's' : ''} of logged data.</p>` : ''}
-                ${!hasEnoughData ? `<p class="weekly-comparison-note">Delta comparison requires at least 14 days of logged data across both weeks.</p>` : ''}
             </div>`;
         content.appendChild(this._makeSection('date_range', 'Week in Review', null, weeklyBody,
             'Your weekly summary compared to the previous 7-day period.'));
