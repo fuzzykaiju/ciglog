@@ -49,6 +49,18 @@ const TRIGGER_GROUPS = [
     { key: 'situational',   label: 'Situational'   },
 ];
 
+// --- Insight priority thresholds (tunable) ---
+const INSIGHT_THRESHOLDS = {
+    strongestTrigger:   { high: 80, mid: 50 },
+    limitAdherence:     { severe: 30, moderate: 10 },
+    smokingTrend:       { steep: 0.5, moderate: 0.2 },
+    intensityShift:     { major: 20, moderate: 10, minor: 5 },
+    worstDay:           { minDays: 7 },
+    dailyLimitStreak:   { closeToRecordPct: 0.75 },
+    longestGap:         { impressive: 24, decent: 12 },
+    personalBestClean:  { closeToRecordPct: 0.75 },
+};
+
 class CigLogTracker {
 
     // --- Initialisation ---
@@ -80,6 +92,7 @@ class CigLogTracker {
             settings:    $('settingsModal'),
             createToday: $('createTodayModal'),
             dailyLimit:  $('dailyLimitModal'),
+            smartInferenceOnboarding: $('smartInferenceOnboardingModal'),
             addCraving:  $('addCravingModal'),
             addSmoke:    $('addSmokeModal'),
             smart:       $('smartModal'),
@@ -155,6 +168,9 @@ class CigLogTracker {
 
         // Daily limit
         this.dailyLimitGroup = document.getElementById('dailyLimitGroup');
+
+        //Smart Craving Inference
+        this.smartInferenceGroup = document.getElementById('smartInferenceGroup');
 
         // Chart
         this.timeRange    = $('timeRange');
@@ -281,7 +297,7 @@ class CigLogTracker {
                 this.settings.dailyLimit = newLimit;
                 this._persist('settings');
                 this._closeModal('dailyLimit');
-                this._finishOnboarding();
+                this._showInferenceOnboarding(); 
             }
         });
 
@@ -289,7 +305,7 @@ class CigLogTracker {
             this.settings.dailyLimit = null;
             this._persist('settings');
             this._closeModal('dailyLimit');
-            this._finishOnboarding();
+            this._showInferenceOnboarding(); 
         });
         
         // Create-today modal
@@ -440,10 +456,41 @@ class CigLogTracker {
         document.getElementById('cancelReset').addEventListener('click',  () => this._closeModal('reset'));
         document.getElementById('confirmReset').addEventListener('click', () => this._doReset());
 
+        // --- Smart Inference Onboarding Modal ---
+        // Confirm button
+        document.getElementById('inferenceOnboardingConfirm').addEventListener('click', () => {
+            const enabled = document.getElementById('onboardingInferenceEnabled').checked;
+            const windowInput = document.getElementById('onboardingInferenceWindow');
+            let windowVal = parseInt(windowInput.value);
+
+            if (enabled) {
+                if (isNaN(windowVal) || windowVal < 1 || windowVal > 120) {
+                    this._toast('Please enter a valid window (1–120 minutes).');
+                    return;
+                }
+                this.settings.smartInferenceEnabled = true;
+                this.settings.smartInferenceWindow = windowVal;
+            } else {
+                this.settings.smartInferenceEnabled = false;
+                this.settings.smartInferenceWindow = this.settings.smartInferenceWindow || 20;
+            }
+
+            this._persist('settings');
+            this._closeModal('smartInferenceOnboarding');
+            this._finishOnboarding();
+        });
+
+        // Skip button
+        document.getElementById('inferenceOnboardingSkip').addEventListener('click', () => {
+            // User skipped – keep existing settings (already off by default)
+            this._closeModal('smartInferenceOnboarding');
+            this._finishOnboarding();
+        });
+
         // Backdrop clicks
         window.addEventListener('click', (e) => {
             // Modals that must not close on backdrop: settings, createToday, confirm, reset
-            const locked = ['settings', 'createToday', 'confirm', 'reset', 'skippedDay', 'dailyLimit'];
+            const locked = ['settings', 'createToday', 'confirm', 'reset', 'skippedDay', 'dailyLimit', 'smartInferenceOnboarding'];
             for (const [key, modal] of Object.entries(this.modals)) {
                 if (e.target === modal && !locked.includes(key)) {
                     if (key === 'chart') this._closeChart();
@@ -457,6 +504,18 @@ class CigLogTracker {
         document.getElementById('dailyLimitEnabled').addEventListener('change', () => {
             const dlValue = document.getElementById('dailyLimitValue');
             dlValue.disabled = !document.getElementById('dailyLimitEnabled').checked;
+        });
+
+        // Smart Inference checkbox toggle
+        document.getElementById('smartInferenceEnabled').addEventListener('change', () => {
+            const win = document.getElementById('smartInferenceWindow');
+            win.disabled = !document.getElementById('smartInferenceEnabled').checked;
+        });
+
+        // Onboarding inference checkbox toggle
+        document.getElementById('onboardingInferenceEnabled').addEventListener('change', () => {
+            const win = document.getElementById('onboardingInferenceWindow');
+            win.disabled = !document.getElementById('onboardingInferenceEnabled').checked;
         });
 
         // Header cell tooltips — tap to show on touch devices
@@ -530,7 +589,9 @@ class CigLogTracker {
                 customTriggers: [],
                 dailyLimit: null,
                 limitHistory: [],
-                featuredHistory: {}
+                featuredHistory: {},
+                smartInferenceEnabled: false,
+                smartInferenceWindow: 20
             };
             this._persist('settings');
             this.currencyInput.disabled = false;
@@ -559,6 +620,17 @@ class CigLogTracker {
                     this.settings.limitHistory.push({ limit: newLimit, from: this._today() });
                 }
                 this.settings.dailyLimit = newLimit;
+            }
+
+            // Smart Inference
+            const infEnabled = document.getElementById('smartInferenceEnabled')?.checked || false;
+            const infWindow = parseInt(document.getElementById('smartInferenceWindow')?.value);
+            if (!isNaN(infWindow) && infWindow >= 1 && infWindow <= 120) {
+                this.settings.smartInferenceEnabled = infEnabled;
+                this.settings.smartInferenceWindow = infWindow;
+            } else {
+                this.settings.smartInferenceEnabled = infEnabled;  // <-- preserve toggle state
+                this.settings.smartInferenceWindow = 20;           // fallback
             }
 
             this._persist('settings');
@@ -609,8 +681,8 @@ class CigLogTracker {
         this.closeSettingsBtn.style.display = 'block';
 
         // Show custom triggers & export/import sections
-        this.customTriggerGroup.style.display = 'flex';
-        this.exportImportGroup.style.display = 'flex';
+        this.customTriggerGroup.classList.remove('first-run-hidden');
+        this.exportImportGroup.classList.remove('first-run-hidden');
 
         // Daily limit group
         this.dailyLimitGroup.classList.remove('daily-limit-hidden');
@@ -622,7 +694,17 @@ class CigLogTracker {
             : '';
         dlValue.disabled = !dlEnabled.checked;
 
+        // Smart Inference – show it (remove hidden class)
+        this.smartInferenceGroup.classList.remove('smart-inference-hidden');
+
         this.customTriggerSection.classList.remove('open');
+
+        // Smart Inference
+        const infEnabled = document.getElementById('smartInferenceEnabled');
+        const infWindow = document.getElementById('smartInferenceWindow');
+        infEnabled.checked = this.settings.smartInferenceEnabled || false;
+        infWindow.value = this.settings.smartInferenceWindow || 20;
+        infWindow.disabled = !infEnabled.checked;
 
         // Populate custom trigger inputs
         const custom = this.settings.customTriggers || [];
@@ -633,9 +715,10 @@ class CigLogTracker {
 
     } else {
         // First run – hide advanced sections
-        this.customTriggerGroup.style.display = 'none';
-        this.exportImportGroup.style.display = 'none';
+        this.customTriggerGroup.classList.add('first-run-hidden');
+        this.exportImportGroup.classList.add('first-run-hidden');
         this.dailyLimitGroup.classList.add('daily-limit-hidden');
+        this.smartInferenceGroup.classList.add('smart-inference-hidden');
         document.getElementById('saveSettings').innerHTML = '<span class="ms">play_arrow</span> Start Tracking';
         this.closeSettingsBtn.style.display = 'none';
         this.settingsTitle.innerHTML = '<span class="ms">wand_shine</span> Welcome to CigLog';
@@ -1068,7 +1151,12 @@ class CigLogTracker {
         const idx = this._getEntryIdx(this.activeDate);
         if (idx === -1) { this._toast('Error: entry not found'); return; }
         const triggers = this._pendingCravingTriggers || [];
-        this.entries[idx].cravings.push({ time: `${hh}:${mm}`, intensity: sel.dataset.intensity, triggers });
+        this.entries[idx].cravings.push({ 
+            time: `${hh}:${mm}`, 
+            intensity: sel.dataset.intensity, 
+            triggers,
+            source: 'manual'
+        });
         this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
         if (this.entries[idx].skipped) this.entries[idx].skipped = false;
         this._persist('entries');
@@ -1091,11 +1179,12 @@ class CigLogTracker {
         this._pendingSmokeTriggers = [];
         this.smokeTriggerToggle.innerHTML = '<span class="ms ms-fill">bolt</span> Add Trigger';
         
-        // Check for recent craving with triggers
+        // Check for recent craving with triggers (within the inference window)
         this._recentCravingTriggers = [];
         const entry = this._getEntry(date);
         if (entry && entry.cravings.length) {
             const now = new Date();
+            const windowMinutes = this.settings.smartInferenceWindow || 20;  // <-- REPLACED hardcoded 30
             const recentCraving = [...entry.cravings]
                 .sort((a, b) => this._byTimeAsc(b, a))
                 .find(c => {
@@ -1103,7 +1192,7 @@ class CigLogTracker {
                     const cravingTime = new Date();
                     cravingTime.setHours(hh, mm, 0, 0);
                     const diffMin = (now - cravingTime) / 60000;
-                    return diffMin >= 0 && diffMin <= 30 && (c.triggers || []).length > 0;
+                    return diffMin >= 0 && diffMin <= windowMinutes && (c.triggers || []).length > 0;
                 });
             if (recentCraving) {
                 this._recentCravingTriggers = recentCraving.triggers;
@@ -1139,11 +1228,12 @@ class CigLogTracker {
         this.smartTriggerToggle.innerHTML = '<span class="ms ms-fill">bolt</span> Add Trigger';
         this.smartCopyTriggerBtn.style.display = 'none';
 
-        // Check for recent craving with triggers (for carry-over)
+        // Check for recent craving with triggers (within the inference window)
         this._recentCravingTriggers = [];
         const entry = this._getEntry(date);
         if (entry && entry.cravings.length) {
             const now = new Date();
+            const windowMinutes = this.settings.smartInferenceWindow || 20;  // <-- REPLACED hardcoded 30
             const recentCraving = [...entry.cravings]
                 .sort((a, b) => this._byTimeAsc(b, a))
                 .find(c => {
@@ -1151,7 +1241,7 @@ class CigLogTracker {
                     const cravingTime = new Date();
                     cravingTime.setHours(hh, mm, 0, 0);
                     const diffMin = (now - cravingTime) / 60000;
-                    return diffMin >= 0 && diffMin <= 30 && (c.triggers || []).length > 0;
+                    return diffMin >= 0 && diffMin <= windowMinutes && (c.triggers || []).length > 0;
                 });
             if (recentCraving) {
                 this._recentCravingTriggers = recentCraving.triggers;
@@ -1185,7 +1275,7 @@ class CigLogTracker {
         const idx = this._getEntryIdx(this.activeDate);
         if (idx === -1) { this._toast('Error: entry not found'); return; }
 
-        // Check for linkable craving within 30 minutes
+        // Check for linkable craving within the reference window
         const linkableCraving = this._findLinkableCraving(this.activeDate, time);
         const triggers = this._pendingSmartTriggers || [];
 
@@ -1209,7 +1299,12 @@ class CigLogTracker {
 
         // No linkable craving – create both
         const intensity = intensityBtn.dataset.intensity;
-        this.entries[idx].cravings.push({ time, intensity, triggers, isLinked: false });
+        this.entries[idx].cravings.push({ 
+            time, 
+            intensity, 
+            triggers, 
+            source: 'smart'
+        });
         this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
         this.entries[idx].smoked.push({
             time,
@@ -1226,17 +1321,19 @@ class CigLogTracker {
         this._toast('Craving & Smoke logged.');
     }
 
+    // Linking logic for smart logging
     _findLinkableCraving(date, time) {
         const entry = this._getEntry(date);
         if (!entry) return null;
         const [hh, mm] = time.split(':').map(Number);
         const targetMinutes = hh * 60 + mm;
+        const windowMinutes = this.settings.smartInferenceWindow || 20;  // <-- REPLACED hardcoded 30
 
         const candidates = entry.cravings.filter(c => {
             const [cH, cM] = c.time.split(':').map(Number);
             const cMinutes = cH * 60 + cM;
             const diff = Math.abs(targetMinutes - cMinutes);
-            return diff <= 30;
+            return diff <= windowMinutes;
         });
         if (candidates.length === 0) return null;
         candidates.sort((a, b) => {
@@ -1245,6 +1342,32 @@ class CigLogTracker {
             const [bH, bM] = b.time.split(':').map(Number);
             const bMin = bH * 60 + bM;
             return Math.abs(targetMinutes - aMin) - Math.abs(targetMinutes - bMin);
+        });
+        return candidates[0];
+    }
+
+    // Find most recent craving within the window BEFORE the given time (for inference)
+    _findCravingBeforeTime(date, time, windowMinutes) {
+        const entry = this._getEntry(date);
+        if (!entry) return null;
+        const [hh, mm] = time.split(':').map(Number);
+        const targetMinutes = hh * 60 + mm;
+
+        // Find all cravings that occur within the window BEFORE the smoke time
+        const candidates = entry.cravings.filter(c => {
+            const [cH, cM] = c.time.split(':').map(Number);
+            const cMinutes = cH * 60 + cM;
+            const diff = targetMinutes - cMinutes; // positive = craving is before smoke
+            return diff >= 0 && diff <= windowMinutes;
+        });
+        if (candidates.length === 0) return null;
+        // Return the most recent craving (closest to smoke time)
+        candidates.sort((a, b) => {
+            const [aH, aM] = a.time.split(':').map(Number);
+            const aMin = aH * 60 + aM;
+            const [bH, bM] = b.time.split(':').map(Number);
+            const bMin = bH * 60 + bM;
+            return bMin - aMin;
         });
         return candidates[0];
     }
@@ -1259,8 +1382,8 @@ class CigLogTracker {
     }
 
     _saveSmoke() {
-        const hh    = this.smokeHH.value.padStart(2, '0');
-        const mm    = this.smokeMM.value.padStart(2, '0');
+        const hh = this.smokeHH.value.padStart(2, '0');
+        const mm = this.smokeMM.value.padStart(2, '0');
         const count = parseInt(this.cigaretteCount.value) || 1;
         if (!this._timeOk(this.smokeHH, this.smokeMM)) {
             this._toast('Please enter a valid time');
@@ -1269,8 +1392,28 @@ class CigLogTracker {
         const idx = this._getEntryIdx(this.activeDate);
         if (idx === -1) { this._toast('Error: entry not found'); return; }
         const triggers = this._pendingSmokeTriggers || [];
+        const smokeTime = `${hh}:${mm}`;
+
+        // --- Inference logic (only when enabled) ---
+        if (this.settings.smartInferenceEnabled) {
+            const windowMinutes = this.settings.smartInferenceWindow || 20;
+            const existingCraving = this._findCravingBeforeTime(this.activeDate, smokeTime, windowMinutes);
+            if (!existingCraving) {
+                // No craving found within the window – create an inferred craving
+                this.entries[idx].cravings.push({
+                    time: smokeTime,
+                    intensity: null,
+                    triggers: [],
+                    source: 'inferred'
+                });
+                this.entries[idx].cravings.sort((a, b) => this._byTimeAsc(a, b));
+            }
+        }
+
+        // Push the smoke entry
         this.entries[idx].smoked.push({
-            time: `${hh}:${mm}`, count,
+            time: smokeTime,
+            count,
             pricePerCigarette: this.settings.cigarettePrice,
             triggers,
         });
@@ -1385,9 +1528,10 @@ class CigLogTracker {
             return `${h}h${m ? ' ' + m + 'm' : ''}`;
         };
 
-        // Build craving events with intra-day intervals
+        // Build craving events with intra-day intervals – EXCLUDE inferred cravings
         let lastCravingMin = null;
         const cravingEvents = [...entry.cravings]
+            .filter(c => c.source !== 'inferred')  // <-- FILTER OUT inferred cravings
             .sort((a, b) => this._byTimeAsc(a, b))
             .map(c => {
                 const [hh, mm] = c.time.split(':').map(Number);
@@ -1495,7 +1639,9 @@ class CigLogTracker {
         this.editDayTitle.innerHTML = `Edit<br><span class="modal-subtitle">${date}</span>`;
         const entry = this._getEntry(date);
         if (!entry) { this._toast('Entry not found'); return; }
-        this._renderCravingRows(entry.cravings);
+        // Filter out inferred cravings – they should never appear in the edit UI
+        const visibleCravings = entry.cravings.filter(c => c.source !== 'inferred');
+        this._renderCravingRows(visibleCravings);
         this._renderSmokeRows(entry.smoked);
         this._syncDeleteBtns();
         this._openModal('editDay');
@@ -1514,9 +1660,11 @@ class CigLogTracker {
     _makeCravingRow(craving, index) {
         const [hh = '', mm = ''] = (craving.time || '').split(':');
         const savedTriggers = craving.triggers || [];
+        const source = craving.source || 'manual';  // preserve or default
         const el = document.createElement('div');
         el.className = 'edit-item';
         el.dataset.triggers = JSON.stringify(savedTriggers);
+        el.dataset.source = source;  // <-- STORE source
         el.innerHTML = `
             <input type="checkbox" class="edit-checkbox craving-checkbox" data-index="${index}">
             <div class="edit-time-input">
@@ -1657,6 +1805,9 @@ class CigLogTracker {
         if (entryIdx === -1) return;
         const TIME_RE = /^([01]?\d|2[0-3]):[0-5]\d$/;
 
+        // --- PRESERVE inferred cravings before rebuilding ---
+        const inferredCravings = this.entries[entryIdx].cravings.filter(c => c.source === 'inferred');
+
         // Collect all issues across all rows
         let missingCT = false; // craving time
         let missingCI = false; // craving intensity
@@ -1704,6 +1855,7 @@ class CigLogTracker {
         if (missingST) { this._toast('Please enter time for all smoke entries.'); return; }
         if (missingSQ) { this._toast('Cigarettes smoked cannot be less than 1.'); return; }
 
+        // --- Rebuild visible cravings from DOM rows (only manual/smart cravings) ---
         const cravings = [];
         this.cravingsList.querySelectorAll('.edit-item').forEach(item => {
             const hh  = item.querySelector('.edit-hh').value.padStart(2, '0');
@@ -1711,9 +1863,18 @@ class CigLogTracker {
             const sel = item.querySelector('.edit-intensity-btn.selected');
             const time = `${hh}:${mm}`;
             const triggers = JSON.parse(item.dataset.triggers || '[]');
-            if (TIME_RE.test(time) && sel) cravings.push({ time, intensity: sel.dataset.intensity, triggers });
+            const source = item.dataset.source || 'manual';
+            // Skip any rows that somehow have source === 'inferred' (extra safety)
+            if (source !== 'inferred' && TIME_RE.test(time) && sel) {
+                cravings.push({ time, intensity: sel.dataset.intensity, triggers, source });
+            }
         });
 
+        // --- Merge preserved inferred cravings with visible ones ---
+        this.entries[entryIdx].cravings = [...cravings, ...inferredCravings]
+            .sort((a, b) => this._byTimeAsc(a, b));
+
+        // --- Smoked entries (no inferred filtering needed) ---
         const smoked = [];
         this.smokedList.querySelectorAll('.edit-item').forEach(item => {
             const hh    = item.querySelector('.edit-hh').value.padStart(2, '0');
@@ -1728,13 +1889,10 @@ class CigLogTracker {
             const triggers = JSON.parse(item.dataset.triggers || '[]');
             if (TIME_RE.test(time) && count > 0) smoked.push({ time, count, pricePerCigarette: price, triggers });
         });
-
-        cravings.sort((a, b) => this._byTimeAsc(a, b));
         smoked.sort((a, b) => this._byTimeAsc(a, b));
+        this.entries[entryIdx].smoked = smoked;
 
-        this.entries[entryIdx].cravings = cravings;
-        this.entries[entryIdx].smoked   = smoked;
-        if ((cravings.length || smoked.length) && this.entries[entryIdx].skipped) {
+        if ((this.entries[entryIdx].cravings.length || smoked.length) && this.entries[entryIdx].skipped) {
             this.entries[entryIdx].skipped = false;
         }
         this._persist('entries');
@@ -1882,15 +2040,17 @@ class CigLogTracker {
 
     _exportCSV() {
         if (!this.entries.length) { this._toast('No data to export'); return; }
-        const rows = ['Date,Time,Type,Intensity/Count,PricePerCigarette,Notes,Triggers'];
+        const rows = ['Date,Time,Type,Intensity/Count,PricePerCigarette,Notes,Triggers,Source'];
 
         this.entries.forEach(e => {
             const notes = `"${(e.notes || '').replace(/"/g, '""')}"`;
 
-            // --- Export normal events ---
-            e.cravings.forEach(c => {
+            // --- Export cravings (skip inferred) ---
+            e.cravings.forEach(c => {                
+                if (c.source === 'inferred') return;
                 const triggers = (c.triggers || []).join(';');
-                rows.push([e.date, c.time, 'Craving', c.intensity, '', notes, `"${triggers}"`].join(','));
+                const source = c.source || 'manual';
+                rows.push([e.date, c.time, 'Craving', c.intensity, '', notes, `"${triggers}"`, source].join(','));
             });
             e.smoked.forEach(s => {
                 const triggers = (s.triggers || []).join(';');
@@ -1993,7 +2153,14 @@ class CigLogTracker {
                     if (!byDate[date].notes && notes) byDate[date].notes = notes;
 
                     if (t === 'craving') {
-                        byDate[date].cravings.push({ time, intensity: value.toLowerCase(), triggers });
+                        const source = cols[7] ? cols[7].trim().toLowerCase() : 'manual';
+                        const validSource = (source === 'manual' || source === 'smart') ? source : 'manual';
+                        byDate[date].cravings.push({ 
+                            time, 
+                            intensity: value.toLowerCase(), 
+                            triggers,
+                            source: validSource
+                        });
                     } else {
                         byDate[date].smoked.push({
                             time,
@@ -2252,6 +2419,19 @@ class CigLogTracker {
         this._startTimer();
     }
 
+    // --- Smart Inference Onboarding ---
+    _showInferenceOnboarding() {
+        const enabledCheckbox = document.getElementById('onboardingInferenceEnabled');
+        const windowInput = document.getElementById('onboardingInferenceWindow');
+        
+        // Off by default – user must opt in (matches Daily Limit pattern)
+        enabledCheckbox.checked = this.settings.smartInferenceEnabled || false;
+        windowInput.value = this.settings.smartInferenceWindow || 20;
+        windowInput.disabled = !enabledCheckbox.checked;
+        
+        this._openModal('smartInferenceOnboarding');
+    }
+
     // --- README modal ---
 
     _openReadme() {
@@ -2395,14 +2575,19 @@ class CigLogTracker {
     // --- Data helpers ---
 
     _computeTriggerStats(entries, minCount = 5) {
-        const stats = {}; // id → { cravings, smoked }
+        const stats = {};
 
         const allTriggerIds = () => {
             const ids = new Set();
             entries.forEach(e => {
-                [...e.cravings, ...e.smoked].forEach(ev =>
-                    (ev.triggers || []).forEach(id => ids.add(id))
-                );
+                e.cravings.forEach(c => {
+                    if (c.source !== 'inferred') {
+                        (c.triggers || []).forEach(id => ids.add(id));
+                    }
+                });
+                e.smoked.forEach(s => {
+                    (s.triggers || []).forEach(id => ids.add(id));
+                });
             });
             return [...ids];
         };
@@ -2410,12 +2595,18 @@ class CigLogTracker {
         allTriggerIds().forEach(id => { stats[id] = { cravings: 0, smoked: 0 }; });
 
         entries.forEach(e => {
-            e.cravings.forEach(c => (c.triggers || []).forEach(id => {
-                if (stats[id]) stats[id].cravings++;
-            }));
-            e.smoked.forEach(s => (s.triggers || []).forEach(id => {
-                if (stats[id]) stats[id].smoked++;
-            }));
+            e.cravings.forEach(c => {
+                if (c.source !== 'inferred') {
+                    (c.triggers || []).forEach(id => {
+                        if (stats[id]) stats[id].cravings++;
+                    });
+                }
+            });
+            e.smoked.forEach(s => {
+                (s.triggers || []).forEach(id => {
+                    if (stats[id]) stats[id].smoked++;
+                });
+            });
         });
 
         return Object.entries(stats)
@@ -2494,6 +2685,30 @@ class CigLogTracker {
             }
         });        
         return longest;
+    }
+
+    // --- Smart Inference Analytics Helpers ---
+
+    // Get total cravings count for a set of source types
+    _getCravingCountBySource(entries, sourceTypes) {
+        let count = 0;
+        entries.forEach(e => {
+            e.cravings.forEach(c => {
+                const src = c.source || 'manual';
+                if (sourceTypes.includes(src)) count++;
+            });
+        });
+        return count;
+    }
+
+    // Compute resistance streak for cravings filtered by source types
+    _computeResistanceStreakForSources(entries, sourceTypes) {
+        // Create filtered entries with only cravings matching source types
+        const filteredEntries = entries.map(e => ({
+            ...e,
+            cravings: e.cravings.filter(c => sourceTypes.includes(c.source || 'manual'))
+        }));
+        return this._computeResistanceStreak(filteredEntries);
     }
 
     _getLimitForDate(dateStr) {
@@ -2625,6 +2840,143 @@ class CigLogTracker {
 
         return `${topLabel} triggers High cravings ${topHigh.highPct}% of the time, ${tail}`;
     }
+
+    // Daily Limit Streak — current streak vs all-time best for this limit
+    _computeDailyLimitStreak() {
+        const hasLimit = (this.settings.limitHistory && this.settings.limitHistory.length > 0) ||
+            (this.settings.dailyLimit !== null && this.settings.dailyLimit !== undefined);
+        if (!hasLimit) return null;
+
+        const sortedEntries = [...this.entries].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+        if (sortedEntries.length === 0) return null;
+
+        let current = 0, longest = 0;
+        const runs = [];
+        sortedEntries.forEach(e => {
+            const limit = this._getLimitForDate(e.date);
+            const smoked = e.smoked.reduce((s, x) => s + x.count, 0);
+            // Skipped day, no limit defined, or over limit — all break the streak
+            if (e.skipped || limit === null || smoked > limit) {
+                if (current > 0) runs.push(current);
+                current = 0;
+            } else {
+                current++;
+                if (current > longest) longest = current;
+            }
+        });
+        if (current > 0) runs.push(current);
+
+        if (runs.length === 0) return null;
+
+        const currentStreak = runs[runs.length - 1];
+        const lastEntry = sortedEntries[sortedEntries.length - 1];
+        const lastLimit = this._getLimitForDate(lastEntry.date);
+        const lastSmoked = lastEntry.smoked.reduce((s, x) => s + x.count, 0);
+        const isActive = !lastEntry.skipped && lastLimit !== null && lastSmoked <= lastLimit;
+        if (!isActive || currentStreak === 0) return null;
+
+        const allTimeBest = Math.max(...runs);
+        const T = INSIGHT_THRESHOLDS.dailyLimitStreak;
+
+        if (currentStreak >= allTimeBest) {
+            return {
+                text: `You've stayed within your daily limit for ${currentStreak} day${currentStreak !== 1 ? 's' : ''} straight — your best yet!`,
+                priority: 1,
+            };
+        } else if (currentStreak >= allTimeBest * T.closeToRecordPct) {
+            return {
+                text: `${currentStreak} day${currentStreak !== 1 ? 's' : ''} within your limit — getting close to your best of ${allTimeBest}.`,
+                priority: 4,
+            };
+        } else {
+            return {
+                text: `${currentStreak} day${currentStreak !== 1 ? 's' : ''} within your daily limit.`,
+                priority: 7,
+            };
+        }
+    }
+
+    // Longest gap without smoking in the period
+    _computeLongestGap(entries) {
+        const smokeTimes = [];
+        entries.forEach(e => {
+            e.smoked.forEach(s => {
+                const [d, m, y] = e.date.split('-').map(Number);
+                const [hh, mm] = s.time.split(':').map(Number);
+                smokeTimes.push(new Date(2000 + y, m - 1, d, hh, mm));
+            });
+        });
+        if (smokeTimes.length < 2) return null;
+
+        smokeTimes.sort((a, b) => a - b);
+        let maxGapMs = 0, gapStart = null;
+        for (let i = 1; i < smokeTimes.length; i++) {
+            const gap = smokeTimes[i] - smokeTimes[i - 1];
+            if (gap > maxGapMs) {
+                maxGapMs = gap;
+                gapStart = smokeTimes[i - 1];
+            }
+        }
+
+        const gapHours = maxGapMs / (1000 * 60 * 60);
+        const T = INSIGHT_THRESHOLDS.longestGap;
+        if (gapHours < 1) return null;
+
+        const dateLabel = `${String(gapStart.getDate()).padStart(2, '0')}-${String(gapStart.getMonth() + 1).padStart(2, '0')}-${String(gapStart.getFullYear() - 2000).padStart(2, '0')}`;
+        const priority = gapHours >= T.impressive ? 2
+            : gapHours >= T.decent ? 5
+            : 8;
+
+        return {
+            text: `Your longest gap without smoking this period was ${gapHours.toFixed(1)} hours, starting ${dateLabel}.`,
+            priority,
+        };
+    }
+
+    // Personal-best clean streak (all-time) vs current active streak
+    _computePersonalBestCleanStreak() {
+        const sortedEntries = [...this.entries].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
+        if (sortedEntries.length === 0) return null;
+
+        let current = 0, longest = 0;
+        const runs = [];
+        sortedEntries.forEach(e => {
+            const smoked = e.smoked.reduce((s, x) => s + x.count, 0);
+            // Skipped day or actual smoking both break the streak
+            if (e.skipped || smoked > 0) {
+                if (current > 0) runs.push(current);
+                current = 0;
+            } else {
+                current++;
+                if (current > longest) longest = current;
+            }
+        });
+        if (current > 0) runs.push(current);
+
+        if (runs.length === 0) return null;
+
+        const currentStreak = runs[runs.length - 1];
+        const lastEntry = sortedEntries[sortedEntries.length - 1];
+        const lastSmoked = lastEntry.smoked.reduce((s, x) => s + x.count, 0);
+        const isActive = !lastEntry.skipped && lastSmoked === 0;
+        if (!isActive || currentStreak === 0) return null;
+
+        const allTimeBest = Math.max(...runs);
+        const T = INSIGHT_THRESHOLDS.personalBestClean;
+
+        if (currentStreak >= allTimeBest) {
+            return {
+                text: `You're on your longest clean streak since you started logging — ${currentStreak} day${currentStreak !== 1 ? 's' : ''}!`,
+                priority: 1,
+            };
+        } else if (currentStreak >= allTimeBest * T.closeToRecordPct) {
+            return {
+                text: `${currentStreak} day${currentStreak !== 1 ? 's' : ''} clean — closing in on your record of ${allTimeBest}.`,
+                priority: 4,
+            };
+        }
+        return null;
+    }
     
     // Pick featured insight
     _pickFeaturedInsight(sentences) {
@@ -2633,14 +2985,12 @@ class CigLogTracker {
 
         const withDecay = sentences.map(s => ({
             ...s,
-            effectivePriority: this._getDecayedPriority(s.text, s.priority ?? null),
+            effectivePriority: this._getDecayedPriority(s.text, s.priority),
             lastFeatured: this.settings.featuredHistory?.[s.text] ?? null,
         }));
 
         withDecay.sort((a, b) => {
-            const aEff = a.effectivePriority ?? Infinity;
-            const bEff = b.effectivePriority ?? Infinity;
-            if (aEff !== bEff) return aEff - bEff;
+            if (a.effectivePriority !== b.effectivePriority) return a.effectivePriority - b.effectivePriority;
             const aTime = a.lastFeatured ?? 0;
             const bTime = b.lastFeatured ?? 0;
             if (aTime !== bTime) return aTime - bTime;
@@ -2652,7 +3002,7 @@ class CigLogTracker {
 
     // Decay helper with edge-case handling
     _getDecayedPriority(sentence, basePriority) {
-        if (basePriority !== null && basePriority <= 3) return basePriority;
+        if (basePriority <= 3) return basePriority;
         if (!this.settings.featuredHistory) return basePriority;
         const lastFeatured = this.settings.featuredHistory[sentence];
         if (!lastFeatured) return basePriority;
@@ -2661,7 +3011,6 @@ class CigLogTracker {
         let penalty = 0;
         if (hoursSince < 24) penalty = 2;
         else if (hoursSince < 72) penalty = 1;
-        if (basePriority === null) return null;
         return basePriority + penalty;
     }
 
@@ -2691,23 +3040,28 @@ class CigLogTracker {
         const sentences = [];
         const tod = this._computeTimeOfDay(entries);
         const binLabels = this._todBinLabels();
+        const T = INSIGHT_THRESHOLDS;
 
-        // 1. Peak smoking time (priority 6)
+        // 1. Peak smoking time (priority 8 — always true, least actionable)
         const peakBin = tod.smoked.indexOf(Math.max(...tod.smoked));
         if (Math.max(...tod.smoked) > 0) {
             sentences.push({
                 text: `Most smoking occurs between ${binLabels[peakBin]}.`,
-                priority: 6,
+                priority: 8,
             });
         }
 
-        // 2. Most dangerous trigger (priority 4)
+        // 2. Strongest trigger (priority scales with conversion rate)
         if (triggerStats.length > 0) {
             const top = triggerStats[0];
             const { label } = this._triggerLabel(top.id);
+            const pct = Math.round(top.rate * 100);
+            const priority = pct >= T.strongestTrigger.high ? 3
+                : pct >= T.strongestTrigger.mid ? 5
+                : 7;
             sentences.push({
-                text: `${label} is your strongest smoking trigger (${Math.round(top.rate * 100)}% conversion).`,
-                priority: 4,
+                text: `${label} is your strongest smoking trigger (${pct}% conversion).`,
+                priority,
             });
         }
 
@@ -2722,8 +3076,10 @@ class CigLogTracker {
                 if (weightedLimit > 0) {
                     const pct = Math.round(((parseFloat(avg) - weightedLimit) / weightedLimit) * 100);
                     const dir = pct > 0 ? `${pct}% over` : `${Math.abs(pct)}% under`;
-                    // Priority 2 if over limit by 20% or more
-                    const priority = (pct >= 20) ? 2 : null;
+                    const priority = pct >= T.limitAdherence.severe ? 1
+                        : pct >= T.limitAdherence.moderate ? 2
+                        : pct > 0 ? 4
+                        : 6;
                     sentences.push({
                         text: `You average ${avg} cigs/day — ${dir} your limit.`,
                         priority,
@@ -2731,29 +3087,29 @@ class CigLogTracker {
                 } else {
                     sentences.push({
                         text: `You average ${avg} cigs/day against a limit of 0.`,
-                        priority: null,
+                        priority: 8,
                     });
                 }
             } else {
                 sentences.push({
                     text: `You average ${avg} cigarettes per day in this period.`,
-                    priority: null,
+                    priority: 8,
                 });
             }
         }
 
-        // 4. Spending projection (priority 5)
+        // 4. Spending projection (flat priority 6)
         const totalMoney = entries.reduce((s, e) => s + e.smoked.reduce((x, y) =>
             x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
         if (uniqueDays >= 7 && totalMoney > 0) {
             const yearlyProjection = Math.round((totalMoney / uniqueDays) * 365);
             sentences.push({
                 text: `At your current rate, you'll spend ${this.settings.currency}${yearlyProjection} on cigarettes this year.`,
-                priority: 5,
+                priority: 6,
             });
         }
 
-        // 5. Smoking trend (priority 1 if trending up)
+        // 5. Smoking trend (priority scales with slope magnitude)
         if (uniqueDays >= 14) {
             const sorted = [...entries].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
             const n = sorted.length;
@@ -2767,9 +3123,12 @@ class CigLogTracker {
             });
             const slope = den !== 0 ? num / den : 0;
             const weeklySlope = Math.abs(slope * 7).toFixed(1);
-            if (Math.abs(slope) * 7 >= 0.2) {
+            const weeklySlopeAbs = Math.abs(slope) * 7;
+            if (weeklySlopeAbs >= T.smokingTrend.moderate) {
                 const dir = slope > 0 ? 'up' : 'down';
-                const priority = (dir === 'up') ? 1 : null;
+                const priority = dir === 'up'
+                    ? (weeklySlopeAbs >= T.smokingTrend.steep ? 1 : 2)
+                    : 5;
                 sentences.push({
                     text: `Smoking is trending ${dir} by ${weeklySlope} cigarettes per week.`,
                     priority,
@@ -2777,35 +3136,61 @@ class CigLogTracker {
             }
         }
 
-        // 6. Intensity Trend (priority 3 if high% shift > 10)
+        // 6. Intensity Trend (priority scales with shift magnitude)
         const intensityTrend = this._computeIntensityTrend();
         if (intensityTrend) {
-            const priority = (Math.abs(intensityTrend.shift) > 10) ? 3 : null;
+            const shiftAbs = Math.abs(intensityTrend.shift);
+            const priority = shiftAbs > T.intensityShift.major ? 2
+                : shiftAbs > T.intensityShift.moderate ? 3
+                : 7;
             sentences.push({
                 text: intensityTrend.text,
                 priority,
             });
         }
 
-        // 7. Trigger + Intensity Association (no priority)
+        // 7. Trigger + Intensity Association (flat priority 7)
         const triggerIntensity = this._computeTriggerIntensityInsight();
         if (triggerIntensity) {
             sentences.push({
                 text: triggerIntensity,
-                priority: null,
+                priority: 7,
             });
         }
 
-        // 8. Worst day (no priority)
-        const worst = entries.reduce((acc, e) => {
-            const count = e.smoked.reduce((s, x) => s + x.count, 0);
-            return count > acc.count ? { date: e.date, count } : acc;
-        }, { date: null, count: 0 });
-        if (worst.count > 0) {
-            sentences.push({
-                text: `Highest single day was ${worst.count} cigarette${worst.count !== 1 ? 's' : ''} (${worst.date}).`,
-                priority: null,
-            });
+        // 8. Worst day (minimum 7 days data, tie-aware, flat priority 8)
+        if (uniqueDays >= T.worstDay.minDays) {
+            const maxCount = entries.reduce((max, e) => {
+                const count = e.smoked.reduce((s, x) => s + x.count, 0);
+                return count > max ? count : max;
+            }, 0);
+            if (maxCount > 0) {
+                const daysWithMax = entries.filter(e =>
+                    e.smoked.reduce((s, x) => s + x.count, 0) === maxCount
+                ).length;
+                const text = daysWithMax > 1
+                    ? `Highest single day was ${maxCount} cigarette${maxCount !== 1 ? 's' : ''} (on ${daysWithMax} days).`
+                    : `Highest single day was ${maxCount} cigarette${maxCount !== 1 ? 's' : ''}.`;
+                sentences.push({ text, priority: 8 });
+            }
+        }
+
+        // 9. Daily Limit Streak
+        const limitStreak = this._computeDailyLimitStreak();
+        if (limitStreak) {
+            sentences.push(limitStreak);
+        }
+
+        // 10. Longest gap without smoking
+        const longestGap = this._computeLongestGap(entries);
+        if (longestGap) {
+            sentences.push(longestGap);
+        }
+
+        // 11. Personal-best clean streak
+        const bestCleanStreak = this._computePersonalBestCleanStreak();
+        if (bestCleanStreak) {
+            sentences.push(bestCleanStreak);
         }
 
         return sentences;
@@ -2828,9 +3213,6 @@ class CigLogTracker {
         const sentences    = this._generateInsightSentences(entries, triggerStats);
         
         // 1. Weekly summary (with delta comparison)
-        // Normalize to midnight to avoid time-of-day boundary drift
-        // last7  = today and the 6 days before it (7 days total, inclusive)
-        // prev7  = the 7 days before that (days 8–14 ago)
         const todayMidnight = new Date(); todayMidnight.setHours(23,59,59,999);
         const d7  = new Date(); d7.setDate(d7.getDate() - 6);   d7.setHours(0,0,0,0);
         const d14 = new Date(); d14.setDate(d14.getDate() - 13); d14.setHours(0,0,0,0);
@@ -2844,43 +3226,72 @@ class CigLogTracker {
             return d >= d14 && d < d7;
         });
 
-        // 14‑day threshold for deltas
         const totalLoggedDays = last7.length + prev7.length;
         const hasEnoughData = totalLoggedDays >= 14;
 
-        const w7Smoked       = last7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
-        const w7Cravings     = last7.reduce((s, e) => s + e.cravings.length, 0);
-        // Use cigarette COUNT (not entry count) so logging 3 cigs in one entry counts as 3
-        const w7Resisted     = Math.max(0, w7Cravings - w7Smoked);
-        // Resistance rate = resisted / total cravings
-        const w7ResRate      = w7Cravings > 0
-            ? Math.round((w7Resisted / w7Cravings) * 100) : null;
-        const w7Streak       = this._computeResistanceStreak(last7);
-        const w7Money        = last7.reduce((s, e) => s + e.smoked.reduce((x, y) =>
-            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
-        const w7MLL          = w7Smoked * 20;
+        const w7Smoked = last7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const p7Smoked = prev7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
 
-        // Previous 7 days
-        const p7Smoked       = prev7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
-        const p7Cravings     = prev7.reduce((s, e) => s + e.cravings.length, 0);
-        const p7Resisted     = Math.max(0, p7Cravings - p7Smoked);
-        const p7ResRate      = p7Cravings > 0
-            ? Math.round((p7Resisted / p7Cravings) * 100) : null;
+        const w7Cravings = last7.reduce((s, e) => s + e.cravings.length, 0);
+        const p7Cravings = prev7.reduce((s, e) => s + e.cravings.length, 0);
+        const w7Money = last7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        const w7MLL = w7Smoked * 20;
+        const p7Money = prev7.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
+        const p7MLL = p7Smoked * 20;
 
-        // Delta helper — returns bracket HTML or empty string
+        // --- Resistance stats: Confirmed vs Estimated ---
+        const confirmedSources = ['manual', 'smart'];
+        const estimatedSources = ['manual', 'smart', 'inferred'];
+
+        const confirmedCravings = this._getCravingCountBySource(last7, confirmedSources);
+        const confirmedPrevCravings = this._getCravingCountBySource(prev7, confirmedSources);
+        const confirmedResisted = Math.max(0, confirmedCravings - w7Smoked);
+        const confirmedPrevResisted = Math.max(0, confirmedPrevCravings - p7Smoked);
+        const confirmedRate = confirmedCravings > 0 ? Math.round((confirmedResisted / confirmedCravings) * 100) : null;
+        const confirmedPrevRate = confirmedPrevCravings > 0 ? Math.round((confirmedPrevResisted / confirmedPrevCravings) * 100) : null;
+        const confirmedStreak = this._computeResistanceStreakForSources(last7, confirmedSources);
+
+        const estimatedCravings = this._getCravingCountBySource(last7, estimatedSources);
+        const estimatedPrevCravings = this._getCravingCountBySource(prev7, estimatedSources);
+        const estimatedResisted = Math.max(0, estimatedCravings - w7Smoked);
+        const estimatedPrevResisted = Math.max(0, estimatedPrevCravings - p7Smoked);
+        const estimatedRate = estimatedCravings > 0 ? Math.round((estimatedResisted / estimatedCravings) * 100) : null;
+        const estimatedStreak = this._computeResistanceStreakForSources(last7, estimatedSources);
+
+        const hasInferredData = last7.some(e => e.cravings.some(c => c.source === 'inferred'));
+
+        const w7Resisted = confirmedResisted;
+        const w7ResRate = confirmedRate;
+        const w7Streak = confirmedStreak;
+        const p7Resisted = confirmedPrevResisted;
+        const p7ResRate = confirmedPrevRate;
+
+        // Resistance rate delta — relative % change, higher is better
+        const resRateDelta = (() => {
+            if (!hasEnoughData || w7ResRate === null || p7ResRate === null || p7ResRate === 0) return '';
+            const pct = Math.round(((w7ResRate - p7ResRate) / p7ResRate) * 100);
+            if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
+            const arrow = pct > 0 ? '↑' : '↓';
+            const cls = pct > 0 ? 'delta-green' : 'delta-red';
+            return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
+        })();
+
+        // Display strings – only declared once!
+        const resistedDisplay = w7ResRate === null ? '—' : String(w7Resisted);
+        const resRateDisplay = w7ResRate === null ? '—' : `${w7ResRate}%`;
+        const estimatedDisplay = hasInferredData ? `(est. ${estimatedResisted} / ${estimatedRate}%)` : '';
+
         const _delta = (curr, prev, lowerIsBetter = true) => {
             if (!hasEnoughData) return '';            
             if (prev === 0) return '';
             const pct = Math.round(((curr - prev) / prev) * 100);
             if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
             const arrow = pct < 0 ? '↓' : '↑';
-            // lowerIsBetter: decrease = good (green), increase = bad (red)
             const isGood = lowerIsBetter ? pct < 0 : pct > 0;
             const cls = isGood ? 'delta-green' : 'delta-red';
             return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
         };
         
-        // Delta arrow helper — returns just an arrow HTML or empty string
         const _deltaArrow = (curr, prev, lowerIsBetter = true) => {
             if (!hasEnoughData || prev === 0) return '';
             const isGood = lowerIsBetter ? curr < prev : curr > prev;
@@ -2889,16 +3300,6 @@ class CigLogTracker {
             const cls = isGood ? 'delta-green' : 'delta-red';
             return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}</span><span class="weekly-delta-bracket">]</span>`;
         };
-
-        // Resistance rate delta — relative % change, higher is better
-        const resRateDelta = (() => {
-            if (!hasEnoughData || w7ResRate === null || p7ResRate === null || p7ResRate === 0) return '';
-            const pct = Math.round(((w7ResRate - p7ResRate) / p7ResRate) * 100);
-            if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
-            const arrow = pct > 0 ? '↑' : '↓';
-            const cls   = pct > 0 ? 'delta-green' : 'delta-red';
-            return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
-        })();
 
         // Trigger labels (min 3 for 7-day window) — tie-aware
         const w7TrigStats = this._computeTriggerStats(last7, 3);
@@ -2915,10 +3316,7 @@ class CigLogTracker {
                 .slice(0, 2);
             return tied.join(' & ');
         };
-
-        const topFreqLabel    = w7Freq.length     ? _tiedLabels(w7Freq,      'total') : null;
-        const strongestLabel  = w7TrigStats.length ? _tiedLabels(w7TrigStats, 'rate')  : null;
-
+        
         // Helper: given sorted stats array and key, return up to 2 tied {icon, label} objects
         const _tiedEntries = (stats, key) => {
             if (!stats.length) return [];
@@ -2941,10 +3339,7 @@ class CigLogTracker {
         };        
 
         // Money + Time Lost for previous period (for delta)
-        const p7Money = prev7.reduce((s, e) => s + e.smoked.reduce((x, y) =>
-            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
-        const p7MLL   = p7Smoked * 20;
-
+        
         const w7Clean = last7.filter(e =>
             e.smoked.reduce((s, x) => s + x.count, 0) === 0
         ).length;
@@ -3023,10 +3418,6 @@ class CigLogTracker {
             return sum + Math.max(0, smoked - effectiveLimit);
         }, 0);
                 
-        // Display values - show - when no data this week
-        const resistedDisplay   = w7Cravings === 0 ? '—' : String(w7Resisted);
-        const resRateDisplay    = w7ResRate === null ? '—' : `${w7ResRate}%`;
-
         const weeklyBody = `
             <div class="weekly-grid">
                 <div class="weekly-stat">
@@ -3044,13 +3435,17 @@ class CigLogTracker {
                 <div class="weekly-stat">
                     <div class="weekly-stat-label">Resisted</div>
                     <div class="weekly-stat-value-row">
-                        <span class="weekly-stat-value">${resistedDisplay}</span>${w7Cravings === 0 ? '' : _delta(w7Resisted, p7Resisted, false)}
+                        <span class="weekly-stat-value">${resistedDisplay}</span>
+                        ${w7ResRate === null ? '' : _delta(w7Resisted, p7Resisted, false)}
+                        ${hasInferredData ? `&nbsp;<span class="weekly-stat-estimated">${estimatedDisplay}</span>` : ''}
                     </div>
                 </div>
                 <div class="weekly-stat">
                     <div class="weekly-stat-label">Resistance Rate</div>
                     <div class="weekly-stat-value-row">
-                        <span class="weekly-stat-value">${resRateDisplay}</span>${w7Cravings === 0 ? '' : resRateDelta}
+                        <span class="weekly-stat-value">${resRateDisplay}</span>
+                        ${w7ResRate === null ? '' : resRateDelta}
+                        ${hasInferredData ? `&nbsp;<span class="weekly-stat-estimated">(est. ${estimatedRate}%)</span>` : ''}
                     </div>
                 </div>
                 <div class="weekly-stat">
@@ -3093,7 +3488,7 @@ class CigLogTracker {
                 </div>
                 <div class="weekly-stat weekly-stat-full">
                     <div class="weekly-stat-label">Longest Resistance Streak</div>
-                    <div class="weekly-stat-value">${w7Streak} cravings</div>
+                    <div class="weekly-stat-value">${w7Streak} cravings${hasInferredData ? ` <span class="weekly-stat-estimated">(est. ${estimatedStreak})</span>` : ''}</div>
                 </div>
                 <div class="weekly-stat weekly-stat-full">
                     <div class="weekly-stat-label">Most Logged Trigger</div>
@@ -3203,7 +3598,9 @@ class CigLogTracker {
                 }
             }
 
-            const secondary = sentences.filter(s => s.text !== featuredText);
+            const secondary = sentences
+                .filter(s => s.text !== featuredText)
+                .sort((a, b) => a.priority - b.priority);
 
             const featuredHtml = featuredText ? `
                 <div class="insight-item insight-featured">

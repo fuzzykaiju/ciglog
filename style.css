@@ -2084,6 +2084,13 @@ body.analytics-active .fixed-header {
     font-style: italic;
 }
 
+.weekly-stat-estimated {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: normal;
+    opacity: 0.7;
+}
+
 /* Trigger rankings — bar-free ranked list */
 .trigger-rank-list {
     display: flex;
@@ -2498,16 +2505,11 @@ body.analytics-active .fixed-header {
     display: none !important;
 }
 
+.settings-rows .form-group.smart-inference-hidden {
+    display: none !important;
+}
+
 /* Daily limit controls (checkbox + number) */
-.daily-limit-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.daily-limit-controls input[type="number"] {
-    width: 70px;
-    flex-shrink: 0;
-}
 
 /* For the daily limit row: the label-cell contains checkbox + label */
 .daily-limit-label-row {
@@ -2537,4 +2539,101 @@ body.analytics-active .fixed-header {
     flex-direction: column;
     align-items: center;
     padding: 15px 20px;
+}
+
+/* Overrides the always-flex rule above when hidden explicitly */
+#customTriggerGroup.first-run-hidden,
+#exportImportGroup.first-run-hidden {
+    display: none !important;
+}
+
+/* Smart Inference */
+#smartInferenceEnabled:checked ~ label {
+    color: var(--text-primary);
+}
+#smartInferenceEnabled:not(:checked) ~ label {
+    color: var(--text-secondary);
+}
+
+#smartInferenceWindow:disabled {
+    color: var(--text-secondary);
+    opacity: 1;
+}
+#smartInferenceWindow:not(:disabled) {
+    color: var(--text-primary);
+}
+
+.daily-limit-controls .unit-label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    padding-right: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.daily-limit-controls {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+/* Bordered box — same idea as .currency-input, label on the right instead of left */
+.unit-input {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-secondary);
+    border: 1px solid rgba(217, 217, 217, 0.25);
+    border-radius: 6px;
+    overflow: hidden;
+    width: 100%;
+}
+
+#smartInferenceGroup .unit-input input[type="number"] {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    background: none;
+    border: none;
+    padding: 10px 8px 10px 12px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.unit-input input[type="number"]:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Dim the whole box, not just the input, when disabled — keeps the old "greyed out" look */
+.unit-input:has(input:disabled) {
+    background-color: #343233;
+    border-color: rgba(217, 217, 217, 0.15);
+}
+
+/* Craving Inference Onboarding — label brightness */
+.inference-onboarding-controls input[type="checkbox"]:checked + label {
+    color: var(--text-primary);
+}
+.inference-onboarding-controls input[type="checkbox"]:not(:checked) + label {
+    color: var(--text-secondary);
+}
+
+/* Input box brightness (mirrors Settings modal) */
+.inference-onboarding-controls .unit-input:has(input:disabled) {
+    background-color: #343233;
+    border-color: rgba(217, 217, 217, 0.15);
+}
+.inference-onboarding-controls .unit-input:has(input:not(:disabled)) {
+    background-color: var(--bg-secondary);
+    border-color: rgba(217, 217, 217, 0.25);
+}
+
+/* Input text color */
+#onboardingInferenceWindow:disabled {
+    color: var(--text-secondary);
+    opacity: 1;
+}
+#onboardingInferenceWindow:not(:disabled) {
+    color: var(--text-primary);
 }

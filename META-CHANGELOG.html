@@ -178,8 +178,16 @@
         <li>Week in Review - 14-day threshold added for delta values to show</li>
     </ul>
 <h4>Version 1.4.0 | 17-08-2026</h4>
-<ul>
-    <li>Smart Logging - long press the smoke cell to log a craving and cigarette together in one go.</li>
-    <li>Smart modal includes time, intensity, count, and triggers - creates both entries at the same timestamp.</li>
-    <li>Duplicate prevention: if a craving exists within 30 minutes, the smoke is linked to it (no duplicate craving).</li>
-</ul>
+    <ul>
+        <li>Smart Logging - long press the smoke cell to log a craving and cigarette together in one go.</li>
+        <li>Smart modal includes time, intensity, count, and triggers - creates both entries at the same timestamp.</li>
+        <li>Duplicate prevention: if a craving exists within 30 minutes, the smoke is linked to it (no duplicate craving).</li>
+    </ul>
+<h4>Version 1.4.1 | 23-08-2026</h4>
+    <ul>
+        <li>Craving Inference added — automatically links a smoke to a recent craving, or estimates a missed craving, within a configurable time window (default 20 min).</li>
+        <li>Cravings now carry a source tag (manual, smart, inferred); inferred cravings are excluded from CSV export and hidden from the Edit and Timeline views.</li>
+        <li>Week in Review now shows confirmed vs. estimated Resisted/Resistance Rate/Longest Streak when inference is enabled.</li>
+        <li>Craving Inference onboarding modal added after the Daily Limit step on first run, matching the existing onboarding pattern.</li>
+        <li>Fixed: Welcome (first-run) modal was incorrectly showing Add Custom Triggers, Export Log, and Load Log buttons due to a CSS rule overriding the hide logic.</li>
+    </ul>

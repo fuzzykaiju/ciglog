@@ -106,6 +106,20 @@
                         </p>
                     </div>
 
+                    <!-- Smart Inference -->
+                    <div class="form-group" id="smartInferenceGroup">
+                        <div class="daily-limit-label-row">
+                            <input type="checkbox" id="smartInferenceEnabled">
+                            <label for="smartInferenceEnabled">Craving Inference:</label>
+                        </div>
+                        <div class="daily-limit-controls">
+                            <div class="unit-input">
+                                <input type="number" id="smartInferenceWindow" min="1" max="120" value="20" disabled>
+                                <span class="unit-label">min</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Time zone -->
                     <div class="form-group">
                         <label for="timezone">Time zone:</label>
@@ -156,16 +170,18 @@
                 <h2 id="createTodayTitle"></h2>
             </div>
             <div class="modal-body" style="text-align:center;">
-                <p>CigLog is a cigarettes craved and smoked logger that helps you log your daily smoking habits.</p>
-                <ul style="text-align:left;margin:12px auto;max-width:280px;color:var(--text-secondary);font-size:0.9rem;list-style:none;padding:0;">
-                    <li style="margin-bottom:6px;"><span class="ms" style="width:20px;">draft</span> Start Fresh and a new zero-day entry will be created today</li>
-                    <li><span class="ms" style="width:20px;">file_open</span> Load from a previous file</li>
-                </ul>
-                <p class="help-text">All data is stored locally.</p>
+                <p style="margin-bottom:16px;color:var(--text-primary);">
+                    Start logging today, or load a previous CigLog export to pick up where you left off.
+                </p>
                 <div class="form-actions" style="flex-direction:column;align-items:center;">
-                    <button id="createTodayYes" class="btn btn-primary" style="width:100%;max-width:280px;"><span class="ms">draft</span> Start Fresh Log</button>
-                    <button id="createTodayLoad" class="btn btn-secondary" style="width:100%;max-width:280px;"><span class="ms">file_open</span> Load from File</button>
+                    <button id="createTodayYes" class="btn btn-primary" style="width:100%;max-width:280px;">
+                        <span class="ms">draft</span> Start Fresh Log
+                    </button>
+                    <button id="createTodayLoad" class="btn btn-secondary" style="width:100%;max-width:280px;">
+                        <span class="ms">file_open</span> Load from File
+                    </button>
                 </div>
+                <p class="help-text" style="margin-top:10px;">All data stays on this device — no account, no cloud.</p>
                 <input type="file" id="csvFileFirstRun" accept=".csv" style="display:none;">
             </div>
         </div>
@@ -185,10 +201,52 @@
                         border:1px solid rgba(217,217,217,0.25);border-radius:8px;color:var(--text-primary);
                         font-family:inherit;font-size:1.1rem;" disabled>
                 </div>
-                <p class="help-text" style="margin-bottom:24px;">Can be changed anytime in <span class="ms" style="font-size:1rem;">settings</span> Settings</p>
+                <p class="help-text" style="margin-bottom:24px;">Change anytime in <span class="ms" style="font-size:1rem;">settings</span> Settings</p>
                 <div style="display:flex;gap:12px;justify-content:center;">
                     <button id="dailyLimitSkip" class="btn btn-ghost" style="flex:1;">Skip</button>
                     <button id="dailyLimitSet" class="btn btn-primary" style="flex:1;">Set Limit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Inference Onboarding Modal -->
+    <div id="smartInferenceOnboardingModal" class="modal">
+        <div class="modal-content actions-modal">
+            <div class="modal-header">
+                <h2><span class="ms">link_2</span> Turn on Craving Inference?</h2>
+            </div>
+            <div class="modal-body" style="padding:20px;text-align:center;">
+                <p style="margin-bottom:12px;color:var(--text-primary);">
+                    Log a smoke without logging the craving first? CigLog can fill in the gap.
+                </p>
+                <p style="margin-bottom:16px;color:var(--text-secondary);font-size:0.85rem;">
+                    When enabled, smokes link to a craving logged within the time window below, or a craving is estimated if none exists.                    
+                </p>
+
+                <!-- Controls wrapper -->
+                <div class="inference-onboarding-controls" style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:20px;">
+                    <!-- Checkbox row -->
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="checkbox" id="onboardingInferenceEnabled">
+                        <label for="onboardingInferenceEnabled" style="font-size:0.95rem;cursor:pointer;">Enable Craving Inference</label>
+                    </div>
+
+                    <!-- Window input row -->
+                    <div style="display:flex;align-items:center;gap:8px;width:100%;max-width:220px;">
+                        <span style="font-size:0.85rem;color:var(--text-secondary);white-space:nowrap;">Time Window:</span>
+                        <div class="unit-input" style="flex:1;min-width:0;">
+                            <input type="number" id="onboardingInferenceWindow" min="1" max="120" value="20" disabled
+                                style="flex:1;min-width:0;background:none;border:none;padding:8px 4px 8px 10px;font-family:inherit;font-size:1rem;text-align:center;">
+                            <span style="padding-right:10px;color:var(--text-secondary);font-size:0.85rem;flex-shrink:0;">min</span>
+                        </div>
+                    </div>
+                    <p class="help-text" style="margin-bottom:4px;">Change anytime in <span class="ms" style="font-size:1rem;">settings</span> Settings</p>
+                </div>
+
+                <div style="display:flex;gap:12px;justify-content:center;">
+                    <button id="inferenceOnboardingSkip" class="btn btn-ghost" style="flex:1;">Skip</button>
+                    <button id="inferenceOnboardingConfirm" class="btn btn-primary" style="flex:1;">Confirm</button>
                 </div>
             </div>
         </div>
@@ -486,9 +544,9 @@
             <div class="modal-body about-body">
                 <h3><span class="ms">deployed_code</span> Code</h3>
                 <p>
-                    Version: <code>1.4.0</code><br>
-                    Build date: <code>17-08-2026</code><br>
-                    Service worker cache: <code>ciglog-v27</code><br>
+                    Version: <code>1.4.1</code><br>
+                    Build date: <code>23-08-2026</code><br>
+                    Service worker cache: <code>ciglog-v28</code><br>
                     Storage schema: <code>ciglog_v1</code>
                 </p>                    
                 <h3><span class="ms">spoke</span> Dependencies</h3>
