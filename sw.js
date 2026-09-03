@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ciglog-v28';
+const CACHE_NAME = 'ciglog-v32';
 const ASSETS = [
   './index.html',
   './script.js',
@@ -9,7 +9,7 @@ const ASSETS = [
   './META-README.html',
   './META-CHANGELOG.html',
   './META-ROADMAP.html',
-  'https://cdn.jsdelivr.net/npm/chart.js'
+  'https://cdn.jsdelivr.net/npm/chart.js',
 ];
 
 // Install: cache all assets

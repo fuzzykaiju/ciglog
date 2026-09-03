@@ -191,3 +191,16 @@
         <li>Craving Inference onboarding modal added after the Daily Limit step on first run, matching the existing onboarding pattern.</li>
         <li>Fixed: Welcome (first-run) modal was incorrectly showing Add Custom Triggers, Export Log, and Load Log buttons due to a CSS rule overriding the hide logic.</li>
     </ul>
+<h4>Version 1.5.0 | 03-09-2026</h4>
+    <ul>
+        <li>"Charts" replaced by "At a Glance" — a full-page view (not a modal), styled distinctly from the Analytics hub with an amber accent and lighter, visual-first cards.</li>
+        <li>Calendar-aligned period selector — 1 week, 2 weeks, 1 month, 3 months, 6 months, 1 year, with a Monday-start week convention and prev/next paging arrows to browse specific past periods.</li>
+        <li>Smoking Pattern card — bars for cigarettes smoked, a muted overlaid line for cravings, at daily granularity through 1 month.</li>
+        <li>3-month and 6-month views bucket into weekly bars; 1-year view buckets into monthly bars, keeping long-range charts readable instead of a dense wall of daily bars.</li>
+        <li>Tap a bucketed bar twice to drill into that specific week or month at full daily detail (with the cravings line back), then use the back arrow to return to where you were.</li>
+        <li>Resistance Rate Trend card — resistance rate as bars; automatically uses Craving Inference data when enabled, or logged-only data when disabled.</li>
+        <li>Intensity Distribution card — donut breakdown of Low/Medium/High craving intensity for the selected period.</li>
+        <li>Daily Limit Adherence card — bar view (week through month) with a stepped limit line that reflects historical limit changes, switching to a donut summary for 3-month+ periods; only shown when a daily limit is currently active.</li>
+        <li>Time of Day moved from Analytics to At a Glance and redesigned as a segmented gradient bar (Morning/Afternoon/Evening/Night), now based on smoking only rather than smoking and cravings combined.</li>
+        <li>Future dates, days before your first logged entry, and unacknowledged skipped days are never plotted as zero across any At a Glance chart — they're left blank rather than shown as clean/inactive.</li>
+    </ul>

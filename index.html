@@ -60,6 +60,38 @@
         </div>
     </div>
 
+    <!-- At a Glance View -->
+    <div id="atAGlanceView" class="aag-view" style="display:none;">
+        <div class="aag-topbar">
+            <div class="aag-header">
+                <button id="backToTableBtnAAG" class="back-btn" aria-label="Back to table">
+                    <span class="ms">arrow_back</span>
+                </button>
+                <h2><span class="ms">visibility</span> At a glance</h2>
+            </div>
+            <div class="aag-period-scroller">
+                <button class="aag-period-chip selected" data-period="week">1 wk</button>
+                <button class="aag-period-chip" data-period="fortnight">2 wk</button>
+                <button class="aag-period-chip" data-period="month">1 mn</button>
+                <button class="aag-period-chip" data-period="3m">3 mn</button>
+                <button class="aag-period-chip" data-period="6m">6 mn</button>
+                <button class="aag-period-chip" data-period="1y">1 yr</button>
+            </div>
+            <div class="aag-date-nav">
+                <button id="aagPrev" class="cal-nav-btn" aria-label="Previous period">
+                    <span class="ms">keyboard_arrow_left</span>
+                </button>
+                <span id="aagDateRangeLabel" class="aag-date-label"></span>
+                <button id="aagNext" class="cal-nav-btn" aria-label="Next period">
+                    <span class="ms">keyboard_arrow_right</span>
+                </button>
+            </div>
+        </div>
+        <div class="aag-content" id="aagContent">
+            <!-- Populated by _renderAtAGlance() -->
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -457,10 +489,10 @@
             <h3>Menu</h3>
             <button id="closeMenu" class="close-btn"><span class="ms">close</span></button>
         </div>
-        <div class="menu-items">
-            <button id="chartBtn" class="menu-item">
-                <span class="menu-icon"><span class="ms">chart_data</span></span>
-                <span>Charts</span>
+        <div class="menu-items">            
+            <button id="atAGlanceBtn" class="menu-item">
+                <span class="menu-icon"><span class="ms">visibility</span></span>
+                <span>At a glance</span>
             </button>
             <button id="analyticsBtn" class="menu-item">
                 <span class="menu-icon"><span class="ms">analytics</span></span>
@@ -494,46 +526,6 @@
     </div>
     <div id="menuOverlay" class="menu-overlay"></div>
 
-    <!-- Chart Modal -->
-    <div id="chartModal" class="modal">
-        <div class="modal-content chart-modal">
-            <div class="modal-header">
-                <h2><span class="ms">chart_data</span> Charts</h2>
-                <button class="close-btn close-chart"><span class="ms">close</span></button>
-            </div>
-            <div class="modal-body chart-body">
-                <select id="timeRange" class="time-select" style="display:block;margin:0 auto 0;">
-                    <option value="7">Past 1 Week</option>
-                    <option value="30">Past 1 Month</option>
-                    <option value="90">Past 3 Months</option>
-                    <option value="180">Past 6 Months</option>
-                    <option value="365">Past 1 Year</option>
-                    <option value="730">Past 2 Years</option>
-                    <option value="1825">Past 5 Years</option>
-                </select>
-                <div class="chart-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Smoked</span>
-                        <span id="totalSmoked" class="stat-value">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Craved</span>
-                        <span id="totalCravings" class="stat-value">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Money Spent</span>
-                        <span id="moneySpent" class="stat-value">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Life Lost</span>
-                        <span id="lifeLost" class="stat-value">0m</span>
-                    </div>
-                </div>
-                <div class="chart-container" id="chartPanelMain"><canvas id="chartMain"></canvas></div>
-            </div>
-        </div>
-    </div>
-
     <!-- About Modal -->
     <div id="aboutModal" class="modal">
         <div class="modal-content">
@@ -544,9 +536,9 @@
             <div class="modal-body about-body">
                 <h3><span class="ms">deployed_code</span> Code</h3>
                 <p>
-                    Version: <code>1.4.1</code><br>
-                    Build date: <code>23-08-2026</code><br>
-                    Service worker cache: <code>ciglog-v28</code><br>
+                    Version: <code>1.5.0</code><br>
+                    Build date: <code>03-09-2026</code><br>
+                    Service worker cache: <code>ciglog-v32</code><br>
                     Storage schema: <code>ciglog_v1</code>
                 </p>                    
                 <h3><span class="ms">spoke</span> Dependencies</h3>

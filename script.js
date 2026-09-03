@@ -69,9 +69,20 @@ class CigLogTracker {
         this.settings    = JSON.parse(localStorage.getItem('ciglog_v1_settings')) || null;
         this.entries     = JSON.parse(localStorage.getItem('ciglog_v1_entries'))  || [];
         this.activeDate  = null;   // date string currently open in any modal
-        this.chart       = null;
         this._confirmCb  = null;
         this._toastTimer = null;
+
+        
+        // At a Glance
+        this._aagPeriod      = 'week';
+        this._aagAnchorDate  = new Date();
+        this._aagSmokingChart = null;
+        this._aagResistanceChart = null;
+        this._aagIntensityChart = null;
+        this._aagLimitChart = null;
+        this._aagDrillBack = null; // one saved {period, anchorDate} snapshot, restored by the back arrow
+        this._aagSmokingPendingTap = null; // { index, timer } — first tap on a bucket bar, awaiting confirm
+        this._aagResistancePendingTap = null; // same, for the Resistance Rate Trend chart
 
         this._cacheElements();
         this._bindListeners();
@@ -99,7 +110,6 @@ class CigLogTracker {
             info:        $('infoModal'),
             editDay:     $('editDayModal'),
             editTrigger: $('editTriggerModal'),
-            chart:       $('chartModal'),
             about:       $('aboutModal'),
             readme:      $('readmeModal'),
             changelog:   document.getElementById('changelogModal'),
@@ -171,15 +181,7 @@ class CigLogTracker {
 
         //Smart Craving Inference
         this.smartInferenceGroup = document.getElementById('smartInferenceGroup');
-
-        // Chart
-        this.timeRange    = $('timeRange');
-        this.statSmoked   = $('totalSmoked');
-        this.statCravings = $('totalCravings');
-        this.statMoney    = $('moneySpent');
-        this.statLifeLost = $('lifeLost');
-        this.chart        = null;
-
+        
         // Trigger sections
         this.cravingTriggerToggle  = $('cravingTriggerToggle');
         this.smokeTriggerToggle    = $('smokeTriggerToggle');
@@ -216,9 +218,9 @@ class CigLogTracker {
         document.getElementById('closeMenu').addEventListener('click',  () => this._closeMenu());
         this.menuOverlay.addEventListener('click', () => this._closeMenu());
 
-        // Menu items
-        document.getElementById('chartBtn').addEventListener('click',
-            () => { this._closeMenu(); this._openModal('chart'); setTimeout(() => this._renderChart(), 100); });
+        // Menu items        
+        document.getElementById('atAGlanceBtn').addEventListener('click',
+            () => { this._closeMenu(); this._showAtAGlanceView(); });
         document.getElementById('analyticsBtn').addEventListener('click',
             () => { this._closeMenu(); this._showAnalyticsView(); });
         document.getElementById('settingsMenuBtn').addEventListener('click',
@@ -426,9 +428,6 @@ class CigLogTracker {
         document.getElementById('saveEditDay').addEventListener('click',
             () => this._saveEditDay());
 
-        // Chart controls
-        this.timeRange.addEventListener('change', () => this._renderChart());
-
         // Edit trigger modal
         document.querySelector('.close-edit-trigger').addEventListener('click',
             () => this._closeModal('editTrigger'));
@@ -437,8 +436,7 @@ class CigLogTracker {
         document.getElementById('confirmEditTrigger').addEventListener('click',
             () => this._confirmEditTriggers());
 
-        // Chart / About / Readme / Import close buttons
-        document.querySelector('.close-chart').addEventListener('click',  () => this._closeChart());
+        // About / Readme / Import close buttons
         document.querySelector('.close-about').addEventListener('click',  () => this._closeModal('about'));
         document.querySelector('.close-readme').addEventListener('click', () => this._closeModal('readme'));
         document.querySelector('.close-changelog').addEventListener('click', () => this._closeModal('changelog'));
@@ -493,8 +491,7 @@ class CigLogTracker {
             const locked = ['settings', 'createToday', 'confirm', 'reset', 'skippedDay', 'dailyLimit', 'smartInferenceOnboarding'];
             for (const [key, modal] of Object.entries(this.modals)) {
                 if (e.target === modal && !locked.includes(key)) {
-                    if (key === 'chart') this._closeChart();
-                    else                 this._closeModal(key);
+                    this._closeModal(key);
                     break;
                 }
             }
@@ -518,6 +515,34 @@ class CigLogTracker {
             win.disabled = !document.getElementById('onboardingInferenceEnabled').checked;
         });
 
+        // At a Glance — period scroller
+        document.querySelectorAll('.aag-period-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.aag-period-chip').forEach(c => c.classList.remove('selected'));
+                chip.classList.add('selected');
+                this._aagPeriod = chip.dataset.period;
+                this._aagAnchorDate = new Date(); // re-anchor to "today" on period switch
+                this._aagDrillBack = null; // manual period choice abandons any drill-down context
+                this._renderAtAGlance();
+            });
+        });
+
+        // At a Glance — drill-down back arrow (delegated, since cards rebuild every render)
+        document.getElementById('aagContent').addEventListener('click', (e) => {
+            if (e.target.closest('.aag-drill-back-btn')) this._aagDrillBackOut();
+        });
+
+        // At a Glance — date paging arrows
+        document.getElementById('aagPrev').addEventListener('click', () => {
+            this._aagShiftAnchor(-1);
+            this._renderAtAGlance();
+        });
+        document.getElementById('aagNext').addEventListener('click', () => {
+            if (this._aagIsCurrentPeriod()) return;
+            this._aagShiftAnchor(1);
+            this._renderAtAGlance();
+        });
+        
         // Header cell tooltips — tap to show on touch devices
         this._tooltipTimer = null;
         document.querySelectorAll('.header-cell').forEach(cell => {
@@ -1912,129 +1937,7 @@ class CigLogTracker {
             gridColor:   'rgba(217,217,217,0.07)',
             font:        'Consolas, Monaco, monospace',
         };
-    }
-
-    _filteredEntries() {
-        const days   = parseInt(this.timeRange.value);
-        const now    = new Date();
-        const cutoff = new Date(now);
-        cutoff.setDate(cutoff.getDate() - days);
-
-        const filtered = this.entries
-            .filter(e => { const d = this._toDate(e.date); return d >= cutoff && d <= now; })
-            .sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
-
-        const totalSmoked   = filtered.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
-        const totalCravings = filtered.reduce((s, e) => s + e.cravings.length, 0);
-        const totalMoney    = filtered.reduce((s, e) => s + e.smoked.reduce((x, y) =>
-            x + y.count * (y.pricePerCigarette ?? this.settings.cigarettePrice), 0), 0);
-        const totalMLL      = totalSmoked * 20;
-        this.statSmoked.textContent   = totalSmoked;
-        this.statCravings.textContent = totalCravings;
-        this.statMoney.textContent = this.settings.currency + parseFloat(totalMoney.toFixed(2)).toString();
-        this.statLifeLost.textContent = this._fmtMLL(totalMLL);
-
-        return filtered;
-    }
-
-    // New single chart
-    _renderChart() {
-        const filtered = this._filteredEntries();
-        const st = this._chartStyle();
-
-        if (this.chart) { this.chart.destroy(); this.chart = null; }
-
-        this.chart = new Chart(
-            document.getElementById('chartMain').getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: filtered.map(e => e.date),
-                    datasets: [
-                        {
-                            label: 'Smoked',
-                            data: filtered.map(e => e.smoked.reduce((s, x) => s + x.count, 0)),
-                            borderColor: '#FF9595',
-                            backgroundColor: 'rgba(255,149,149,0.07)',
-                            pointBackgroundColor: '#FF9595',
-                            pointRadius: 3,
-                            pointHoverRadius: 5,
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: true,
-                        },
-                        {
-                            label: 'Craved',
-                            data: filtered.map(e => e.cravings.length),
-                            borderColor: '#d9d9d9',
-                            backgroundColor: 'rgba(217,217,217,0.04)',
-                            pointBackgroundColor: '#d9d9d9',
-                            pointRadius: 3,
-                            pointHoverRadius: 5,
-                            borderWidth: 1.5,
-                            borderDash: [5, 4],
-                            tension: 0.3,
-                            fill: false,
-                        },
-                    ],
-                },
-                options: this._chartOptions(st),
-            }
-        );
-    }
-
-    _chartOptions(st, { stacked = false, tooltipExtra = null } = {}) {
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: st.textPrimary,
-                        font: { family: st.font, size: 11 },
-                        boxWidth: 12,
-                        padding: 10,
-                    },
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(26,26,26,0.95)',
-                    titleColor: st.textPrimary,
-                    bodyColor: st.textPrimary,
-                    borderColor: 'rgba(217,217,217,0.25)',
-                    borderWidth: 1,
-                    cornerRadius: 6,
-                    callbacks: tooltipExtra ? {
-                        afterBody: (items) => {
-                            const extra = tooltipExtra(items[0]);
-                            return extra ? [extra] : [];
-                        },
-                    } : {},
-                },
-            },
-            scales: {
-                x: {
-                    stacked,
-                    grid:  { color: st.gridColor },
-                    ticks: { color: st.textSecond, maxRotation: 45,
-                             font: { family: st.font, size: 10 } },
-                },
-                y: {
-                    stacked,
-                    beginAtZero: true,
-                    grid:  { color: st.gridColor },
-                    ticks: { stepSize: 1, color: st.textSecond,
-                             font: { family: st.font, size: 10 } },
-                },
-            },
-            animation: { duration: 400, easing: 'easeOutQuart' },
-        };
-    }
-
-    _closeChart() {
-        this._closeModal('chart');
-        if (this.chart) { this.chart.destroy(); this.chart = null; }
-    }
+    }    
 
     // --- Export / Import ---
 
@@ -2561,6 +2464,1342 @@ class CigLogTracker {
         }
     }
 
+    // --- At a Glance View ---
+
+    _showAtAGlanceView() {
+        document.querySelector('.main-content').style.display = 'none';
+        document.getElementById('atAGlanceView').style.display = 'flex';
+        document.body.classList.add('aag-active');
+        this._renderAtAGlance();
+
+        document.getElementById('backToTableBtnAAG').onclick = () => this._hideAtAGlanceView();
+    }
+
+    _hideAtAGlanceView() {
+        document.getElementById('atAGlanceView').style.display = 'none';
+        document.querySelector('.main-content').style.display = 'block';
+        document.body.classList.remove('aag-active');
+        this._aagDrillBack = null;
+        if (this._aagSmokingChart) { this._aagSmokingChart.destroy(); this._aagSmokingChart = null; }
+        if (this._aagResistanceChart) { this._aagResistanceChart.destroy(); this._aagResistanceChart = null; }
+        if (this._aagIntensityChart) { this._aagIntensityChart.destroy(); this._aagIntensityChart = null; }
+        if (this._aagLimitChart) { this._aagLimitChart.destroy(); this._aagLimitChart = null; }
+    }
+
+    // Returns { start: Date, end: Date, label: string } for the calendar-aligned
+    // period containing anchorDate. Weeks start Monday.
+    _aagGetPeriodBounds(period, anchorDate) {
+        const d = new Date(anchorDate);
+        d.setHours(0, 0, 0, 0);
+
+        const mondayOf = (date) => {
+            const dt = new Date(date);
+            const day = dt.getDay(); // 0=Sun..6=Sat
+            const diff = (day === 0 ? -6 : 1 - day);
+            dt.setDate(dt.getDate() + diff);
+            return dt;
+        };
+
+        const fmtRange = (start, end) => {
+            const opts = { day: 'numeric', month: 'short' };
+            const sStr = start.toLocaleDateString('en-GB', opts);
+            const eStr = end.toLocaleDateString('en-GB', { ...opts, year: 'numeric' });
+            return `${sStr} – ${eStr}`;
+        };
+
+        
+        const fmtMonthRange = (start, end) => {
+            const sameYear = start.getFullYear() === end.getFullYear();
+            const sStr = start.toLocaleDateString('en-GB', sameYear ? { month: 'short' } : { month: 'short', year: 'numeric' });
+            const eStr = end.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+            return `${sStr} – ${eStr}`;
+        };
+
+        let start, end, label;
+
+        switch (period) {
+            case 'week': {
+                start = mondayOf(d);
+                end = new Date(start); end.setDate(end.getDate() + 6);
+                label = fmtRange(start, end);
+                break;
+            }
+            case 'fortnight': {
+                const currentWeekMonday = mondayOf(d);
+                start = new Date(currentWeekMonday);
+                start.setDate(start.getDate() - 7); // Monday of the previous week
+                end = new Date(currentWeekMonday);
+                end.setDate(end.getDate() + 6); // Sunday of the current week
+                label = fmtRange(start, end);
+                break;
+            }
+            case 'month': {
+                start = new Date(d.getFullYear(), d.getMonth(), 1);
+                end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+                label = start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+                break;
+            }
+            case '3m': {
+                end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+                start = new Date(d.getFullYear(), d.getMonth() - 2, 1);
+                label = fmtMonthRange(start, end);
+                break;
+            }
+            case '6m': {
+                end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+                start = new Date(d.getFullYear(), d.getMonth() - 5, 1);
+                label = fmtMonthRange(start, end);
+                break;
+            }
+            case '1y': {
+                end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+                start = new Date(d.getFullYear(), d.getMonth() - 11, 1);
+                label = fmtMonthRange(start, end);
+                break;
+            }
+            default: {
+                start = mondayOf(d);
+                end = new Date(start); end.setDate(end.getDate() + 6);
+                label = fmtRange(start, end);
+            }
+        }
+
+        end.setHours(23, 59, 59, 999);
+        return { start, end, label };
+    }
+
+    // Pure: returns a new shifted date, doesn't touch state. direction: -1 or +1.
+    _aagShiftDate(date, period, direction) {
+        const d = new Date(date);
+        switch (period) {
+            case 'week':      d.setDate(d.getDate() + 7 * direction); break;
+            case 'fortnight': d.setDate(d.getDate() + 14 * direction); break;
+            case 'month':     d.setMonth(d.getMonth() + direction); break;
+            case '3m':        d.setMonth(d.getMonth() + 3 * direction); break;
+            case '6m':        d.setMonth(d.getMonth() + 6 * direction); break;
+            case '1y':        d.setFullYear(d.getFullYear() + direction); break;
+        }
+        return d;
+    }
+
+    // direction: -1 (prev) or +1 (next) — shifts the anchor by one unit of the current period
+    _aagShiftAnchor(direction) {
+        this._aagAnchorDate = this._aagShiftDate(this._aagAnchorDate, this._aagPeriod, direction);
+    }
+
+    // Bounds of the period immediately before the currently visible one — for deltas
+    _aagGetPreviousPeriodBounds() {
+        const prevAnchor = this._aagShiftDate(this._aagAnchorDate, this._aagPeriod, -1);
+        return this._aagGetPeriodBounds(this._aagPeriod, prevAnchor);
+    }
+
+    // True if the visible period contains today — disables the "next" arrow
+    _aagIsCurrentPeriod() {
+        const { start, end } = this._aagGetPeriodBounds(this._aagPeriod, this._aagAnchorDate);
+        const now = new Date();
+        return now >= start && now <= end;
+    }
+
+    _renderAtAGlance() {
+        const { start, end, label } = this._aagGetPeriodBounds(this._aagPeriod, this._aagAnchorDate);
+        document.getElementById('aagDateRangeLabel').textContent = label;
+
+        const nextBtn = document.getElementById('aagNext');
+        const atPresent = this._aagIsCurrentPeriod();
+        nextBtn.disabled = atPresent;
+        nextBtn.style.opacity = atPresent ? '0.3' : '1';
+
+        const { start: prevStart, end: prevEnd } = this._aagGetPreviousPeriodBounds();
+
+        const content = document.getElementById('aagContent');
+        content.innerHTML = '';
+        content.appendChild(this._aagRenderSmokingPatternCard(start, end, prevStart, prevEnd));
+        content.appendChild(this._aagRenderResistanceCard(start, end, prevStart, prevEnd));
+        content.appendChild(this._aagRenderIntensityCard(start, end, prevStart, prevEnd));
+
+        const limitCard = this._aagRenderDailyLimitCard(start, end);
+        if (limitCard) content.appendChild(limitCard);
+
+        content.appendChild(this._aagRenderTimeOfDayCard(start, end));
+
+        requestAnimationFrame(() => {
+            this._aagRenderSmokingPatternChart(start, end);
+            this._aagRenderResistanceChart(start, end);
+            this._aagRenderIntensityChart(start, end);
+            if (limitCard) {
+                if (this._aagIsLimitBarMode()) this._aagRenderDailyLimitChart(start, end);
+                else this._aagRenderDailyLimitDonutChart(start, end);
+            }
+        });
+    }
+
+    // Leaner sibling of _makeSection() — no help-tooltip/subtitle machinery.
+    // Consumed by Steps 2–6.
+    _aagMakeCard(icon, title, bodyHtml, headerExtra = '') {
+        const section = document.createElement('div');
+        section.className = 'aag-section';
+        section.innerHTML = `
+            <div class="aag-section-header">
+                <span class="ms">${icon}</span>
+                <h3>${title}</h3>
+                ${headerExtra}
+            </div>
+            <div class="aag-section-body">${bodyHtml}</div>`;
+        return section;
+    }
+    
+    // All entries whose date falls within [start, end] inclusive
+    _aagGetEntriesInBounds(start, end) {
+        return this.entries.filter(e => {
+            const d = this._toDate(e.date);
+            return d >= start && d <= end;
+        });
+    }
+
+    _aagComputeTotals(entries) {
+        const smoked = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const craved = entries.reduce((s, e) => s + e.cravings.length, 0);
+        return { smoked, craved };
+    }
+
+    // Earliest date the user has ever logged anything — same concept Monthly
+    // Calendar already uses (isBeforeFirst) to mute pre-history days. Returns
+    // null if there's no data at all yet.
+    _getFirstEntryDate() {
+        if (!this.entries.length) return null;
+        return this.entries.reduce((min, e) => {
+            const d = this._toDate(e.date);
+            return (!min || d < min) ? d : min;
+        }, null);
+    }
+    
+    // A previous period only counts as a fair comparison baseline if it
+    // falls ENTIRELY on/after the user's first-ever entry — not just
+    // "has at least one entry somewhere in it." A period straddling or
+    // predating first-entry has an artificially tiny real sample, which
+    // produces wildly inflated deltas (e.g. 1→11 reading as "+1000%").
+    _aagPreviousPeriodIsReliable(prevStart) {
+        const firstEntryDate = this._getFirstEntryDate();
+        return !!firstEntryDate && prevStart >= firstEntryDate;
+    }
+    
+    // Which granularity Smoking Pattern / Resistance Rate Trend render at,
+    // driven directly by the selected period — week/fortnight/month stay
+    // daily; 3mo/6mo bucket weekly; 1yr buckets monthly. Bucketing exists
+    // because hundreds of raw daily bars/points became illegible, and zoom
+    // (the original mitigation) didn't work reliably on mobile and was
+    // removed — bucketing is the v1.5 replacement strategy.
+    _aagGetChartGranularity() {
+        if (['week', 'fortnight', 'month'].includes(this._aagPeriod)) return 'daily';
+        if (['3m', '6m'].includes(this._aagPeriod)) return 'weekly';
+        return 'monthly'; // 1y
+    }
+
+    // Bucket boundaries covering [start, end]. Weekly buckets are Monday-
+    // start weeks (matching the rest of the app); monthly buckets are
+    // calendar months. Bucket bounds may extend slightly beyond [start,end]
+    // at the edges (a Monday-start week can bleed into the previous month
+    // when a 3mo/6mo range starts mid-week) — callers clip to [start,end]
+    // when aggregating, same treatment as any other partial-period case.
+    _aagBuildBucketBoundaries(start, end, granularity) {
+        const buckets = [];
+        if (granularity === 'weekly') {
+            const mondayOf = (date) => {
+                const dt = new Date(date);
+                const day = dt.getDay();
+                const diff = (day === 0 ? -6 : 1 - day);
+                dt.setDate(dt.getDate() + diff);
+                dt.setHours(0, 0, 0, 0);
+                return dt;
+            };
+            let cur = mondayOf(start);
+            while (cur <= end) {
+                const bucketStart = new Date(cur);
+                const bucketEnd = new Date(cur);
+                bucketEnd.setDate(bucketEnd.getDate() + 6);
+                bucketEnd.setHours(23, 59, 59, 999);
+                buckets.push({ bucketStart, bucketEnd, anchor: new Date(bucketStart) });
+                cur.setDate(cur.getDate() + 7);
+            }
+        } else { // monthly
+            let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+            while (cur <= end) {
+                const bucketStart = new Date(cur.getFullYear(), cur.getMonth(), 1);
+                const bucketEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+                bucketEnd.setHours(23, 59, 59, 999);
+                buckets.push({ bucketStart, bucketEnd, anchor: new Date(bucketStart) });
+                cur.setMonth(cur.getMonth() + 1);
+            }
+        }
+        return buckets;
+    }
+
+    // Bucketed Smoked totals — Craved is deliberately not bucketed
+    // alongside it; it disappears entirely at these granularities rather
+    // than compressing into a shape that would compete with the bars.
+    // A bucket sums only real days (future/pre-history/skipped excluded,
+    // same gap philosophy as the daily series); zero real days -> null gap,
+    // real days with zero smoking -> 0, plotted normally.
+    _aagBuildBucketedSmokingSeries(start, end, granularity) {
+        const byDate = {};
+        this.entries.forEach(e => { byDate[e.date] = e; });
+        const todayDt = this._toDate(this._today());
+        const firstEntryDate = this._getFirstEntryDate();
+
+        const buckets = this._aagBuildBucketBoundaries(start, end, granularity);
+        const labels = [];
+        const smoked = [];
+        const bucketMeta = [];
+
+        buckets.forEach(b => {
+            const clippedStart = b.bucketStart < start ? start : b.bucketStart;
+            const clippedEnd = b.bucketEnd > end ? end : b.bucketEnd;
+
+            let realDays = 0;
+            let smokedSum = 0;
+            const cur = new Date(clippedStart);
+            while (cur <= clippedEnd) {
+                const dd = String(cur.getDate()).padStart(2, '0');
+                const mm = String(cur.getMonth() + 1).padStart(2, '0');
+                const yy = String(cur.getFullYear() - 2000).padStart(2, '0');
+                const dateStr = `${dd}-${mm}-${yy}`;
+                const isFuture = cur > todayDt;
+                const isBeforeFirst = !firstEntryDate || cur < firstEntryDate;
+                const entry = byDate[dateStr];
+                const isSkipped = entry && entry.skipped && !entry.clean &&
+                                  !entry.cravings.length && !entry.smoked.length;
+                if (!isFuture && !isBeforeFirst && !isSkipped) {
+                    realDays++;
+                    smokedSum += entry ? entry.smoked.reduce((s, x) => s + x.count, 0) : 0;
+                }
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            labels.push(granularity === 'weekly'
+                ? b.bucketStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                : b.bucketStart.toLocaleDateString('en-GB', { month: 'short' }));
+            smoked.push(realDays === 0 ? null : smokedSum);
+            bucketMeta.push({ anchor: b.anchor });
+        });
+
+        return { labels, smoked, bucketMeta };
+    }
+
+    // Bucketed Resistance Rate — same sum-then-divide-once aggregate math
+    // as the hero number, applied per bucket rather than once for the
+    // whole period. A bucket is a gap if it has zero qualifying cravings,
+    // or if smoked exceeds cravings (untrustworthy denominator) — same
+    // rule as the per-day series, just aggregated across the bucket.
+    _aagBuildBucketedResistanceSeries(start, end, granularity) {
+        const sourceTypes = this._aagGetResistanceSourceTypes();
+        const byDate = {};
+        this.entries.forEach(e => { byDate[e.date] = e; });
+        const todayDt = this._toDate(this._today());
+        const firstEntryDate = this._getFirstEntryDate();
+
+        const buckets = this._aagBuildBucketBoundaries(start, end, granularity);
+        const labels = [];
+        const rates = [];
+        const bucketMeta = [];
+
+        buckets.forEach(b => {
+            const clippedStart = b.bucketStart < start ? start : b.bucketStart;
+            const clippedEnd = b.bucketEnd > end ? end : b.bucketEnd;
+
+            let cravingCount = 0;
+            let smokedCount = 0;
+            const cur = new Date(clippedStart);
+            while (cur <= clippedEnd) {
+                const dd = String(cur.getDate()).padStart(2, '0');
+                const mm = String(cur.getMonth() + 1).padStart(2, '0');
+                const yy = String(cur.getFullYear() - 2000).padStart(2, '0');
+                const dateStr = `${dd}-${mm}-${yy}`;
+                const isFuture = cur > todayDt;
+                const isBeforeFirst = !firstEntryDate || cur < firstEntryDate;
+                const entry = byDate[dateStr];
+                if (!isFuture && !isBeforeFirst) {
+                    cravingCount += entry
+                        ? entry.cravings.filter(c => sourceTypes.includes(c.source || 'manual')).length
+                        : 0;
+                    smokedCount += entry ? entry.smoked.reduce((s, x) => s + x.count, 0) : 0;
+                }
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            labels.push(granularity === 'weekly'
+                ? b.bucketStart.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                : b.bucketStart.toLocaleDateString('en-GB', { month: 'short' }));
+
+            if (cravingCount === 0 || smokedCount > cravingCount) {
+                rates.push(null);
+            } else {
+                rates.push(Math.round(((cravingCount - smokedCount) / cravingCount) * 100));
+            }
+            bucketMeta.push({ anchor: b.anchor });
+        });
+
+        return { labels, rates, bucketMeta };
+    }
+
+    // Tapping a bucket bar jumps the whole page (all cards share one period
+    // state) to that bucket's own week or month — recovering the daily
+    // detail the bucket compressed away. Capped at one level: the
+    // destination is always daily granularity with nothing further
+    // compressed beneath it, so there's nothing left to drill into again.
+    _aagDrillInto(anchorDate, granularity) {
+        this._aagDrillBack = { period: this._aagPeriod, anchorDate: new Date(this._aagAnchorDate) };
+        this._aagPeriod = granularity === 'weekly' ? 'week' : 'month';
+        this._aagAnchorDate = anchorDate;
+
+        document.querySelectorAll('.aag-period-chip').forEach(c =>
+            c.classList.toggle('selected', c.dataset.period === this._aagPeriod));
+
+        this._renderAtAGlance();
+    }
+
+    _aagDrillBackOut() {
+        if (!this._aagDrillBack) return;
+        this._aagPeriod = this._aagDrillBack.period;
+        this._aagAnchorDate = this._aagDrillBack.anchorDate;
+        this._aagDrillBack = null;
+
+        document.querySelectorAll('.aag-period-chip').forEach(c =>
+            c.classList.toggle('selected', c.dataset.period === this._aagPeriod));
+
+        this._renderAtAGlance();
+    }
+
+    // Sparse axis-label logic shared by every AAG line/bar chart. Given the
+    // full labels array (dd-mm-yy strings) and a tick's index, decides what
+    // text (if any) that tick shows, scaled by how many points are in view:
+    // week/fortnight → every day, single letter; month → date number on the
+    // first day of each week; 3mo+ → month name on the first day of each month.
+    // Returns '' for ticks that should stay blank, which Chart.js renders as
+    // present-but-invisible rather than collapsing/reflowing the axis.
+    _aagAxisTickInfo(labels, index) {
+        const raw = labels[index];
+        const [dd, mm, yy] = raw.split('-').map(Number);
+        const date = new Date(2000 + yy, mm - 1, dd);
+        const dow = date.getDay(); // 0 = Sunday
+
+        let text = '';
+        if (labels.length <= 14) {
+            const dayLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            text = dayLetters[dow];
+        } else if (labels.length <= 31) {
+            if (dow === 1) text = String(dd); // Monday = start of week
+        } else {
+            if (dd === 1) {
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                text = months[mm - 1];
+            }
+        }
+        return { text, isSunday: dow === 0 };
+    }
+
+    // One data point per calendar day in [start, end] — full range including future
+    // and pre-history days, so the axis always shows the whole week/month/etc.
+    // Days that actually fall within the user's logging history are zero-filled
+    // (keeps the line continuous across genuine logging gaps); future days AND
+    // days before the user's first-ever entry are both null, which Chart.js
+    // renders as a gap — a zero there would misleadingly imply "clean day"
+    // when the truth is "no data exists for this app yet."
+    _aagBuildDailySeries(start, end) {
+        const byDate = {};
+        this.entries.forEach(e => { byDate[e.date] = e; });
+
+        const todayDt = this._toDate(this._today());
+        const firstEntryDate = this._getFirstEntryDate();
+
+        const labels = [];
+        const smoked = [];
+        const craved = [];
+        const cur = new Date(start);
+        while (cur <= end) {
+            const dd = String(cur.getDate()).padStart(2, '0');
+            const mm = String(cur.getMonth() + 1).padStart(2, '0');
+            const yy = String(cur.getFullYear() - 2000).padStart(2, '0');
+            const dateStr = `${dd}-${mm}-${yy}`;
+            const isFuture = cur > todayDt;
+            const isBeforeFirst = !firstEntryDate || cur < firstEntryDate;
+            const entry = byDate[dateStr];
+            // Same "unacknowledged skipped day" definition _renderTable() already uses —
+            // a skipped day has no real data, so it's a gap, not a plotted 0.
+            const isSkipped = entry && entry.skipped && !entry.clean &&
+                              !entry.cravings.length && !entry.smoked.length;
+            labels.push(dateStr);
+            if (isFuture || isBeforeFirst || isSkipped) {
+                smoked.push(null);
+                craved.push(null);
+            } else {
+                smoked.push(entry ? entry.smoked.reduce((s, x) => s + x.count, 0) : 0);
+                craved.push(entry ? entry.cravings.length : 0);
+            }
+            cur.setDate(cur.getDate() + 1);
+        }
+        return { labels, smoked, craved };
+    }
+    
+    // Which craving sources count toward resistance rate, driven by the
+    // Smart Craving Inference setting — not a dual-series comparison, a
+    // single source-set switch (spec §5.2).
+    _aagGetResistanceSourceTypes() {
+        return this.settings.smartInferenceEnabled
+            ? ['manual', 'smart', 'inferred']
+            : ['manual', 'smart'];
+    }
+
+    // Per-day resistance rate for the line itself. Each point is that day's
+    // own rate, computed independently — NOT related to the period-aggregate
+    // hero number below, which sums raw counts across the whole range rather
+    // than averaging these daily percentages.
+    // A day with zero cravings (per the active source set) is a null gap —
+    // 0/0 is undefined, not 0%. Future and pre-history days are gaps too,
+    // same rule as Smoking Pattern's line.
+    _aagBuildResistanceSeries(start, end) {
+        const sourceTypes = this._aagGetResistanceSourceTypes();
+        const byDate = {};
+        this.entries.forEach(e => { byDate[e.date] = e; });
+
+        const todayDt = this._toDate(this._today());
+        const firstEntryDate = this._getFirstEntryDate();
+
+        const labels = [];
+        const rates = [];
+        const cur = new Date(start);
+        while (cur <= end) {
+            const dd = String(cur.getDate()).padStart(2, '0');
+            const mm = String(cur.getMonth() + 1).padStart(2, '0');
+            const yy = String(cur.getFullYear() - 2000).padStart(2, '0');
+            const dateStr = `${dd}-${mm}-${yy}`;
+            const isFuture = cur > todayDt;
+            const isBeforeFirst = !firstEntryDate || cur < firstEntryDate;
+            labels.push(dateStr);
+
+            if (isFuture || isBeforeFirst) {
+                rates.push(null);
+            } else {
+                const entry = byDate[dateStr];
+                const cravingCount = entry
+                    ? entry.cravings.filter(c => sourceTypes.includes(c.source || 'manual')).length
+                    : 0;
+                const smokedCount = entry ? entry.smoked.reduce((s, x) => s + x.count, 0) : 0;
+                // A day only gets a bar if the craving data can actually be
+                // trusted: zero qualifying cravings (0/0, undefined) OR more
+                // smokes than logged cravings (data incomplete — some smokes
+                // happened with no craving tracked at all) both produce a gap,
+                // same as future/pre-history days, rather than a misleading 0%.
+                if (cravingCount === 0 || smokedCount > cravingCount) {
+                    rates.push(null);
+                } else {
+                    const resisted = cravingCount - smokedCount;
+                    rates.push(Math.round((resisted / cravingCount) * 100));
+                }
+            }
+            cur.setDate(cur.getDate() + 1);
+        }
+        return { labels, rates };
+    }
+
+    // Period-aggregate rate for the hero number: total resisted ÷ total
+    // cravings across every day in range, summed FIRST then divided ONCE —
+    // not an average of the daily line values (that would misweight days
+    // with few cravings the same as days with many). Returns null if the
+    // period has zero qualifying cravings at all.
+    _aagComputeResistanceAggregate(start, end) {
+        const sourceTypes = this._aagGetResistanceSourceTypes();
+        const entries = this._aagGetEntriesInBounds(start, end);
+        const cravingCount = this._getCravingCountBySource(entries, sourceTypes);
+        if (cravingCount === 0) return null;
+        const smokedCount = entries.reduce((s, e) => s + e.smoked.reduce((x, y) => x + y.count, 0), 0);
+        const resisted = Math.max(0, cravingCount - smokedCount);
+        return Math.round((resisted / cravingCount) * 100);
+    }
+
+    _aagRenderResistanceCard(start, end, prevStart, prevEnd) {
+        const rate = this._aagComputeResistanceAggregate(start, end);
+        const prevRate = this._aagComputeResistanceAggregate(prevStart, prevEnd);
+        const hasEnoughData = rate !== null && prevRate !== null && this._aagPreviousPeriodIsReliable(prevStart);
+
+        const rateDisplay = rate === null ? '—' : `${rate}%`;
+        const delta = hasEnoughData ? this._computeDelta(rate, prevRate, false, true) : '';
+
+        const body = `
+            <div class="aag-chart-container">
+                <canvas id="aagResistanceChart"></canvas>
+            </div>
+            <div class="aag-stat-row">
+                <div class="aag-stat">
+                    <span class="aag-stat-label">Resistance rate</span>
+                    <span class="aag-stat-value">${rateDisplay}${delta}</span>
+                </div>
+            </div>`;
+
+        const backArrow = this._aagDrillBack
+            ? `<button class="aag-drill-back-btn" aria-label="Back to previous view"><span class="ms">arrow_back</span></button>`
+            : '';
+
+        return this._aagMakeCard('assignment_turned_in', 'Resistance Rate Trend', body, backArrow);
+    }
+
+    _aagRenderResistanceChart(start, end) {
+        const canvas = document.getElementById('aagResistanceChart');
+        if (!canvas) return;
+
+        const st = this._chartStyle();
+        const granularity = this._aagGetChartGranularity();
+        const bucketed = granularity !== 'daily';
+
+        let labels, rates, bucketMeta;
+        if (bucketed) {
+            ({ labels, rates, bucketMeta } = this._aagBuildBucketedResistanceSeries(start, end, granularity));
+        } else {
+            ({ labels, rates } = this._aagBuildResistanceSeries(start, end));
+        }
+
+        let barPercentage, categoryPercentage;
+        if (!bucketed) {
+            if (labels.length <= 14) { barPercentage = 0.5; categoryPercentage = 0.6; }
+            else                     { barPercentage = 0.6; categoryPercentage = 0.7; }
+        } else if (granularity === 'weekly') {
+            barPercentage = 0.6; categoryPercentage = 0.7;
+        } else {
+            barPercentage = 0.5; categoryPercentage = 0.6;
+        }
+
+        if (this._aagResistanceChart) { this._aagResistanceChart.destroy(); this._aagResistanceChart = null; }
+
+        this._aagResistanceChart = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Resistance rate',
+                    data: rates,
+                    backgroundColor: '#C6E0B4',
+                    borderRadius: 50,
+                    borderSkipped: false,
+                    barPercentage,
+                    categoryPercentage,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { bottom: 4 } },
+                interaction: { mode: 'index', intersect: false },
+                onClick: bucketed ? (evt, elements) => {
+                    if (!elements.length) return;
+                    const index = elements[0].index;
+                    const pending = this._aagResistancePendingTap;
+
+                    if (pending && pending.index === index) {
+                        clearTimeout(pending.timer);
+                        this._aagResistancePendingTap = null;
+                        this._aagDrillInto(bucketMeta[index].anchor, granularity);
+                    } else {
+                        if (pending) clearTimeout(pending.timer);
+                        this._aagResistancePendingTap = {
+                            index,
+                            timer: setTimeout(() => { this._aagResistancePendingTap = null; }, 3000),
+                        };
+                    }
+                } : undefined,
+                onHover: bucketed ? (evt, elements) => {
+                    evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                } : undefined,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(26,26,26,0.95)',
+                        titleColor: st.textPrimary,
+                        bodyColor: st.textPrimary,
+                        borderColor: 'rgba(217,217,217,0.25)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                        callbacks: {
+                            label: (ctx) => `${ctx.parsed.y}% resisted`,
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: bucketed ? {
+                            autoSkip: true,
+                            maxTicksLimit: granularity === 'weekly' ? 8 : 12,
+                            maxRotation: 0,
+                            font: { family: st.font, size: 10 },
+                            color: st.textSecond,
+                        } : {
+                            autoSkip: false,
+                            maxRotation: 0,
+                            font: { family: st.font, size: 10 },
+                            color: (ctx) => this._aagAxisTickInfo(labels, ctx.index).isSunday ? st.textPrimary : st.textSecond,
+                            callback: (value, index) => this._aagAxisTickInfo(labels, index).text,
+                        },
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        grid: { color: st.gridColor },
+                        border: { display: false },
+                        afterFit: (scale) => { scale.width = 34; },
+                        ticks: {
+                            stepSize: 25,
+                            color: st.textSecond,
+                            callback: (v) => `${v}%`,
+                            font: { family: st.font, size: 10 },
+                        },
+                    },
+                },
+                animation: { duration: 400, easing: 'easeOutQuart' },
+            },
+        });
+    }
+
+    _aagRenderSmokingPatternCard(start, end, prevStart, prevEnd) {
+        const entries = this._aagGetEntriesInBounds(start, end);
+        const prevEntries = this._aagGetEntriesInBounds(prevStart, prevEnd);
+        const { smoked, craved } = this._aagComputeTotals(entries);
+        const { smoked: prevSmoked, craved: prevCraved } = this._aagComputeTotals(prevEntries);
+        const hasEnoughData = this._aagPreviousPeriodIsReliable(prevStart);
+
+        const body = `
+            <div class="aag-chart-container">
+                <canvas id="aagSmokingPatternChart"></canvas>
+            </div>
+            <div class="aag-stat-row">
+                <div class="aag-stat">
+                    <span class="aag-stat-label">Smoked</span>
+                    <span class="aag-stat-value">${smoked}${this._computeDelta(smoked, prevSmoked, true, hasEnoughData)}</span>
+                </div>
+                <div class="aag-stat">
+                    <span class="aag-stat-label">Cravings</span>
+                    <span class="aag-stat-value">${craved}${this._computeDelta(craved, prevCraved, true, hasEnoughData)}</span>
+                </div>
+            </div>`;
+
+        const backArrow = this._aagDrillBack
+            ? `<button class="aag-drill-back-btn" aria-label="Back to previous view"><span class="ms">arrow_back</span></button>`
+            : '';
+
+        return this._aagMakeCard('assignment_late', 'Smoking Pattern', body, backArrow);
+    }
+
+    _aagRenderSmokingPatternChart(start, end) {
+        const canvas = document.getElementById('aagSmokingPatternChart');
+        if (!canvas) return;
+
+        const st = this._chartStyle();
+        const granularity = this._aagGetChartGranularity();
+        const bucketed = granularity !== 'daily';
+
+        let labels, smoked, craved, bucketMeta;
+        if (bucketed) {
+            ({ labels, smoked, bucketMeta } = this._aagBuildBucketedSmokingSeries(start, end, granularity));
+        } else {
+            ({ labels, smoked, craved } = this._aagBuildDailySeries(start, end));
+        }
+
+        let barPercentage, categoryPercentage;
+        if (!bucketed) {
+            if (labels.length <= 14) { barPercentage = 0.5; categoryPercentage = 0.6; }
+            else                     { barPercentage = 0.6; categoryPercentage = 0.7; }
+        } else if (granularity === 'weekly') {
+            barPercentage = 0.6; categoryPercentage = 0.7; // ~13-26 bars, same density as daily-month tier
+        } else {
+            barPercentage = 0.5; categoryPercentage = 0.6; // ~12 bars, same density as daily-week/fortnight tier
+        }
+
+        const datasets = [{
+            type: 'bar',
+            label: 'Smoked',
+            data: smoked,
+            backgroundColor: '#f1976d',
+            borderRadius: 50,
+            borderSkipped: false,
+            barPercentage,
+            categoryPercentage,
+            order: 2,
+        }];
+
+        // Craved only exists at daily granularity — it disappears entirely
+        // once bars are bucketed, rather than compressing into a shape
+        // that would compete with them (spec decision, v1.5).
+        if (!bucketed) {
+            datasets.push({
+                type: 'line',
+                label: 'Craved',
+                data: craved,
+                borderColor: 'rgba(217,217,217,0.3)',
+                backgroundColor: 'transparent',
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointBackgroundColor: 'rgba(217,217,217,0.5)',
+                borderWidth: 1.5,
+                tension: 0.1,
+                fill: false,
+                order: 1,
+            });
+        }
+
+        if (this._aagSmokingChart) { this._aagSmokingChart.destroy(); this._aagSmokingChart = null; }
+
+        this._aagSmokingChart = new Chart(canvas.getContext('2d'), {
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                onClick: bucketed ? (evt, elements) => {
+                    if (!elements.length) return;
+                    const index = elements[0].index;
+                    const pending = this._aagSmokingPendingTap;
+
+                    if (pending && pending.index === index) {
+                        // Second tap on the same bar — confirm the drill-down.
+                        clearTimeout(pending.timer);
+                        this._aagSmokingPendingTap = null;
+                        this._aagDrillInto(bucketMeta[index].anchor, granularity);
+                    } else {
+                        // First tap (or a tap on a different bar) — just let the
+                        // default tooltip show. Arm a short window for a
+                        // confirming second tap on this same bar.
+                        if (pending) clearTimeout(pending.timer);
+                        this._aagSmokingPendingTap = {
+                            index,
+                            timer: setTimeout(() => { this._aagSmokingPendingTap = null; }, 3000),
+                        };
+                    }
+                } : undefined,
+                onHover: bucketed ? (evt, elements) => {
+                    evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                } : undefined,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(26,26,26,0.95)',
+                        titleColor: st.textPrimary,
+                        bodyColor: st.textPrimary,
+                        borderColor: 'rgba(217,217,217,0.25)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: bucketed ? {
+                            autoSkip: true,
+                            maxTicksLimit: granularity === 'weekly' ? 8 : 12,
+                            maxRotation: 0,
+                            font: { family: st.font, size: 10 },
+                            color: st.textSecond,
+                        } : {
+                            autoSkip: false,
+                            maxRotation: 0,
+                            font: { family: st.font, size: 10 },
+                            color: (ctx) => this._aagAxisTickInfo(labels, ctx.index).isSunday ? st.textPrimary : st.textSecond,
+                            callback: (value, index) => this._aagAxisTickInfo(labels, index).text,
+                        },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: st.gridColor },
+                        border: { display: false },
+                        afterFit: (scale) => { scale.width = 34; },
+                        ticks: { color: st.textSecond, precision: 0, font: { family: st.font, size: 10 } },
+                    },
+                },
+                animation: { duration: 400, easing: 'easeOutQuart' },
+            },
+        });
+    }
+    
+    // Counts cravings with a set intensity (inferred cravings have
+    // intensity: null and are naturally excluded, same as everywhere else
+    // in the app that filters on this).
+    _aagComputeIntensityCounts(entries) {
+        const counts = { low: 0, medium: 0, high: 0 };
+        entries.forEach(e => {
+            e.cravings.forEach(c => {
+                if (c.intensity && counts[c.intensity] !== undefined) counts[c.intensity]++;
+            });
+        });
+        return counts;
+    }
+
+    _aagRenderIntensityCard(start, end, prevStart, prevEnd) {
+        const entries = this._aagGetEntriesInBounds(start, end);
+        const counts = this._aagComputeIntensityCounts(entries);
+        const total = counts.low + counts.medium + counts.high;
+
+        if (total === 0) {
+            const body = '<p class="analytics-empty" style="margin:12px 0;">No cravings with intensity logged in this period.</p>';
+            return this._aagMakeCard('circles_ext', 'Intensity Distribution', body);
+        }
+
+        const pct = {
+            low: Math.round((counts.low / total) * 100),
+            medium: Math.round((counts.medium / total) * 100),
+            high: Math.round((counts.high / total) * 100),
+        };
+
+        // Delta caption — point difference in High%, not the relative-%
+        // format _computeDelta uses, since "8 points" reads more plainly
+        // here than a relative percentage-of-a-percentage would.
+        const prevEntries = this._aagGetEntriesInBounds(prevStart, prevEnd);
+        const prevCounts = this._aagComputeIntensityCounts(prevEntries);
+        const prevTotal = prevCounts.low + prevCounts.medium + prevCounts.high;
+        let captionHtml = '';
+        if (prevTotal > 0) {
+            const prevHighPct = Math.round((prevCounts.high / prevTotal) * 100);
+            const shift = pct.high - prevHighPct;
+            if (Math.abs(shift) >= 5) {
+                const arrow = shift > 0 ? '↑' : '↓';
+                const cls = shift > 0 ? 'delta-red' : 'delta-green'; // more High is worse
+                captionHtml = `<div class="aag-intensity-caption"><span class="weekly-delta ${cls}">${arrow}${Math.abs(shift)}pts</span> High vs last period</div>`;
+            }
+        }
+
+        const body = `
+            <div class="aag-donut-container">
+                <canvas id="aagIntensityChart"></canvas>
+            </div>
+            <div class="aag-intensity-breakdown">
+                <div class="aag-intensity-row">
+                    <span class="aag-intensity-left"><span class="aag-intensity-dot" style="background:var(--low-intensity);"></span>Low</span>
+                    <span>${pct.low}% (${counts.low})</span>
+                </div>
+                <div class="aag-intensity-row">
+                    <span class="aag-intensity-left"><span class="aag-intensity-dot" style="background:var(--medium-intensity);"></span>Medium</span>
+                    <span>${pct.medium}% (${counts.medium})</span>
+                </div>
+                <div class="aag-intensity-row">
+                    <span class="aag-intensity-left"><span class="aag-intensity-dot" style="background:var(--high-intensity);"></span>High</span>
+                    <span>${pct.high}% (${counts.high})</span>
+                </div>
+            </div>
+            ${captionHtml}`;
+
+        return this._aagMakeCard('circles_ext', 'Intensity Distribution', body);
+    }
+
+    _aagRenderIntensityChart(start, end) {
+        const canvas = document.getElementById('aagIntensityChart');
+        if (!canvas) return; // absent when the empty state rendered instead
+
+        const entries = this._aagGetEntriesInBounds(start, end);
+        const counts = this._aagComputeIntensityCounts(entries);
+        const total = counts.low + counts.medium + counts.high;
+
+        if (this._aagIntensityChart) { this._aagIntensityChart.destroy(); this._aagIntensityChart = null; }
+
+        this._aagIntensityChart = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Low', 'Medium', 'High'],
+                datasets: [{
+                    data: [counts.low, counts.medium, counts.high],
+                    backgroundColor: ['#C6E0B4', '#FFE699', '#FF9595'],
+                    borderColor: '#3A3838',
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(26,26,26,0.95)',
+                        titleColor: '#d9d9d9',
+                        bodyColor: '#d9d9d9',
+                        borderColor: 'rgba(217,217,217,0.25)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                        callbacks: {
+                            label: (ctx) => {
+                                const pct = Math.round((ctx.parsed / total) * 100);
+                                return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                            },
+                        },
+                    },
+                },
+                animation: { duration: 400, easing: 'easeOutQuart' },
+            },
+        });
+    }
+
+    
+    _aagIsLimitBarMode() {
+        return ['week', 'fortnight', 'month'].includes(this._aagPeriod);
+    }
+
+    // Per-day series for bar mode. A day only gets a value if it's real,
+    // countable data — future, pre-history, and skipped days are null in
+    // both arrays (no bar, no limit-line point), same gap rule as every
+    // other card. `limits[i]` uses the existing _getLimitForDate(), so a
+    // limitHistory change mid-period naturally produces different values
+    // on either side of the change date, which is what lets the line step.
+    _aagBuildDailyLimitSeries(start, end) {
+        const byDate = {};
+        this.entries.forEach(e => { byDate[e.date] = e; });
+
+        const todayDt = this._toDate(this._today());
+        const firstEntryDate = this._getFirstEntryDate();
+
+        const labels = [];
+        const smoked = [];
+        const limits = [];
+        const cur = new Date(start);
+        while (cur <= end) {
+            const dd = String(cur.getDate()).padStart(2, '0');
+            const mm = String(cur.getMonth() + 1).padStart(2, '0');
+            const yy = String(cur.getFullYear() - 2000).padStart(2, '0');
+            const dateStr = `${dd}-${mm}-${yy}`;
+            const isFuture = cur > todayDt;
+            const isBeforeFirst = !firstEntryDate || cur < firstEntryDate;
+            const entry = byDate[dateStr];
+            const isSkipped = entry && entry.skipped && !entry.clean &&
+                              !entry.cravings.length && !entry.smoked.length;
+            labels.push(dateStr);
+            if (isFuture || isBeforeFirst || isSkipped) {
+                smoked.push(null);
+                limits.push(null);
+            } else {
+                smoked.push(entry ? entry.smoked.reduce((s, x) => s + x.count, 0) : 0);
+                limits.push(this._getLimitForDate(dateStr));
+            }
+            cur.setDate(cur.getDate() + 1);
+        }
+        return { labels, smoked, limits };
+    }
+
+    // Aggregate within/over/no-limit counts across [start, end] — shared by
+    // both modes: bar mode's stat row and donut mode's segments/breakdown
+    // are the exact same three numbers, just visualized differently.
+    // Same gap exclusions as the per-day series (future/pre-history/skipped
+    // days don't count toward any bucket, not even "no limit").
+    _aagComputeDailyLimitCounts(start, end) {
+        const byDate = {};
+        this.entries.forEach(e => { byDate[e.date] = e; });
+
+        const todayDt = this._toDate(this._today());
+        const firstEntryDate = this._getFirstEntryDate();
+
+        let within = 0, over = 0, noLimit = 0;
+        const cur = new Date(start);
+        while (cur <= end) {
+            const dd = String(cur.getDate()).padStart(2, '0');
+            const mm = String(cur.getMonth() + 1).padStart(2, '0');
+            const yy = String(cur.getFullYear() - 2000).padStart(2, '0');
+            const dateStr = `${dd}-${mm}-${yy}`;
+            const isFuture = cur > todayDt;
+            const isBeforeFirst = !firstEntryDate || cur < firstEntryDate;
+            const entry = byDate[dateStr];
+            const isSkipped = entry && entry.skipped && !entry.clean &&
+                              !entry.cravings.length && !entry.smoked.length;
+            if (!isFuture && !isBeforeFirst && !isSkipped) {
+                const smokedCount = entry ? entry.smoked.reduce((s, x) => s + x.count, 0) : 0;
+                const limit = this._getLimitForDate(dateStr);
+                if (limit === null) noLimit++;
+                else if (smokedCount > limit) over++;
+                else within++;
+            }
+            cur.setDate(cur.getDate() + 1);
+        }
+        return { within, over, noLimit, total: within + over + noLimit };
+    }
+
+    _aagRenderDailyLimitCard(start, end) {
+        // Card visibility gate — hidden entirely if no limit is active right
+        // now, regardless of period or history (spec §5.4).
+        if (this.settings.dailyLimit === null || this.settings.dailyLimit === undefined) {
+            return null;
+        }
+
+        const barMode = this._aagIsLimitBarMode();
+        const counts = this._aagComputeDailyLimitCounts(start, end);
+
+        const pct = counts.total > 0 ? {
+            within: Math.round((counts.within / counts.total) * 100),
+            over: Math.round((counts.over / counts.total) * 100),
+            noLimit: Math.round((counts.noLimit / counts.total) * 100),
+        } : { within: 0, over: 0, noLimit: 0 };
+
+        const breakdownRows = `
+            <div class="aag-intensity-breakdown">
+                <div class="aag-intensity-row">
+                    <span class="aag-intensity-left"><span class="aag-intensity-dot" style="background:var(--green);"></span>Within limit</span>
+                    <span>${pct.within}% (${counts.within})</span>
+                </div>
+                <div class="aag-intensity-row">
+                    <span class="aag-intensity-left"><span class="aag-intensity-dot" style="background:var(--red);"></span>Over limit</span>
+                    <span>${pct.over}% (${counts.over})</span>
+                </div>
+                <div class="aag-intensity-row">
+                    <span class="aag-intensity-left"><span class="aag-intensity-dot" style="background:var(--text-secondary);"></span>No limit</span>
+                    <span>${pct.noLimit}% (${counts.noLimit})</span>
+                </div>
+            </div>`;
+
+        let bodyHtml;
+        if (barMode) {
+            bodyHtml = `
+                <div class="aag-chart-container">
+                    <canvas id="aagLimitChart"></canvas>
+                </div>
+                ${breakdownRows}
+                <div class="aag-stat-row">
+                    <div class="aag-stat">
+                        <span class="aag-stat-label">Days within limit</span>
+                        <span class="aag-stat-value">${counts.total > 0 ? `${counts.within} / ${counts.total}` : '—'}</span>
+                    </div>
+                </div>`;
+        } else if (counts.total === 0) {
+            bodyHtml = '<p class="analytics-empty" style="margin:12px 0;">No data in this period.</p>';
+        } else {
+            bodyHtml = `
+                <div class="aag-donut-container">
+                    <canvas id="aagLimitDonutChart"></canvas>
+                </div>
+                ${breakdownRows}
+                <div class="aag-intensity-caption">${counts.within} of ${counts.total} days within limit</div>`;
+        }
+
+        return this._aagMakeCard('flag', 'Daily Limit Adherence', bodyHtml);
+    }
+
+    _aagRenderDailyLimitChart(start, end) {
+        const canvas = document.getElementById('aagLimitChart');
+        if (!canvas) return;
+
+        const { labels, smoked, limits } = this._aagBuildDailyLimitSeries(start, end);
+        const st = this._chartStyle();
+
+        const barColors = smoked.map((s, i) => {
+            if (s === null) return 'transparent';
+            const lim = limits[i];
+            if (lim === null) return 'rgba(166,166,166,0.6)';
+            return s > lim ? '#FF9595' : '#C6E0B4';
+        });
+
+        // Bar mode only ever covers week/fortnight/month (≤31 days), so two
+        // tiers are enough — no need for the 3mo+ tiers other bars use.
+        let barPercentage, categoryPercentage;
+        if (labels.length <= 14) { barPercentage = 0.5; categoryPercentage = 0.6; }
+        else                     { barPercentage = 0.6; categoryPercentage = 0.7; }
+
+        if (this._aagLimitChart) { this._aagLimitChart.destroy(); this._aagLimitChart = null; }
+
+        this._aagLimitChart = new Chart(canvas.getContext('2d'), {
+            data: {
+                labels,
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: 'Smoked',
+                        data: smoked,
+                        backgroundColor: barColors,
+                        borderRadius: 50,
+                        borderSkipped: false,
+                        barPercentage,
+                        categoryPercentage,
+                        order: 1,
+                    },
+                    {
+                        type: 'line',
+                        label: 'Limit',
+                        data: limits,
+                        borderColor: 'rgba(217,217,217,0.6)',
+                        borderDash: [6, 4],
+                        borderWidth: 1.5,
+                        pointRadius: 0,
+                        stepped: 'after', // holds each day's own value, steps exactly at a limitHistory change date
+                        fill: false,
+                        order: 2,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(26,26,26,0.95)',
+                        titleColor: st.textPrimary,
+                        bodyColor: st.textPrimary,
+                        borderColor: 'rgba(217,217,217,0.25)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                        callbacks: {
+                            label: (ctx) => ctx.dataset.type === 'bar' ? `Smoked: ${ctx.parsed.y}` : `Limit: ${ctx.parsed.y}`,
+                        },
+                    },
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        border: { display: false },
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 0,
+                            font: { family: st.font, size: 10 },
+                            color: (ctx) => this._aagAxisTickInfo(labels, ctx.index).isSunday ? st.textPrimary : st.textSecond,
+                            callback: (value, index) => this._aagAxisTickInfo(labels, index).text,
+                        },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: st.gridColor },
+                        border: { display: false },
+                        afterFit: (scale) => { scale.width = 34; },
+                        ticks: { color: st.textSecond, precision: 0, font: { family: st.font, size: 10 } },
+                    },
+                },
+                animation: { duration: 400, easing: 'easeOutQuart' },
+            },
+        });
+    }
+
+    _aagRenderDailyLimitDonutChart(start, end) {
+        const canvas = document.getElementById('aagLimitDonutChart');
+        if (!canvas) return; // absent when the empty state rendered instead
+
+        const counts = this._aagComputeDailyLimitCounts(start, end);
+
+        if (this._aagLimitChart) { this._aagLimitChart.destroy(); this._aagLimitChart = null; }
+
+        this._aagLimitChart = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Within limit', 'Over limit', 'No limit'],
+                datasets: [{
+                    data: [counts.within, counts.over, counts.noLimit],
+                    backgroundColor: ['#C6E0B4', '#FF9595', 'rgba(166,166,166,0.6)'],
+                    borderColor: '#3A3838',
+                    borderWidth: 2,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(26,26,26,0.95)',
+                        titleColor: '#d9d9d9',
+                        bodyColor: '#d9d9d9',
+                        borderColor: 'rgba(217,217,217,0.25)',
+                        borderWidth: 1,
+                        cornerRadius: 6,
+                        callbacks: {
+                            label: (ctx) => {
+                                const pct = counts.total ? Math.round((ctx.parsed / counts.total) * 100) : 0;
+                                return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                            },
+                        },
+                    },
+                },
+                animation: { duration: 400, easing: 'easeOutQuart' },
+            },
+        });
+    }
+    
+    // Fixed named segments per spec — equal-width by construction, not
+    // proportional to clock-hour span. Morning/Afternoon are 6h each,
+    // Evening is 4h, Night is 8h (wraps past midnight), but width on
+    // screen is always 1/4 each, matching the period-selector grid pattern.
+    _aagTimeOfDaySegments() {
+        return [
+            { key: 'morning',   label: 'Morning',   range: '06:00-11:59', icon: 'wb_twilight',   hours: [6,7,8,9,10,11] },
+            { key: 'afternoon', label: 'Afternoon', range: '12:00-17:59', icon: 'sunny',          hours: [12,13,14,15,16,17] },
+            { key: 'evening',   label: 'Evening',   range: '18:00-21:59', icon: 'wb_twilight_2',  hours: [18,19,20,21] },
+            { key: 'night',     label: 'Night',     range: '22:00-05:59', icon: 'moon_stars',     hours: [22,23,0,1,2,3,4,5] },
+        ];
+    }
+
+    // Smokes only, per spec §5.5 — cravings deliberately excluded so this
+    // card answers one question ("when do I actually smoke"), not two.
+    _aagComputeTimeOfDaySmoked(entries) {
+        const segments = this._aagTimeOfDaySegments();
+        const counts = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+        entries.forEach(e => {
+            e.smoked.forEach(s => {
+                const hour = parseInt(s.time.split(':')[0], 10);
+                const seg = segments.find(seg => seg.hours.includes(hour));
+                if (seg) counts[seg.key] += s.count;
+            });
+        });
+        return counts;
+    }
+
+    _aagRenderTimeOfDayCard(start, end) {
+        const entries = this._aagGetEntriesInBounds(start, end);
+        const counts = this._aagComputeTimeOfDaySmoked(entries);
+        const total = counts.morning + counts.afternoon + counts.evening + counts.night;
+        const segments = this._aagTimeOfDaySegments();
+
+        if (total === 0) {
+            const body = '<p class="analytics-empty" style="margin:12px 0;">No smoking logged in this period.</p>';
+            return this._aagMakeCard('timelapse', 'Time of Day', body);
+        }
+
+        const segColors = { morning: '#FAC775', afternoon: '#f1976d', evening: '#d9784a', night: '#7a5236' };
+
+        const barHtml = segments.map(seg =>
+            `<div class="aag-tod-segment" style="background:${segColors[seg.key]};"></div>`
+        ).join('');
+
+        const columnsHtml = segments.map(seg => {
+            const pct = Math.round((counts[seg.key] / total) * 100);
+            return `
+                <div class="aag-tod-col">
+                    <span class="ms">${seg.icon}</span>
+                    <span class="aag-tod-col-name">${seg.label}</span>
+                    <span class="aag-tod-col-range">${seg.range}</span>
+                    <span class="aag-tod-col-pct">${pct}%</span>
+                    <span class="aag-tod-col-count">${counts[seg.key]} cig${counts[seg.key] !== 1 ? 's' : ''}</span>
+                </div>`;
+        }).join('');
+
+        // Featured insight — simplest case, a single fixed "peak segment"
+        // sentence rather than a rotating/priority system (spec §5.5 —
+        // don't over-build this prematurely).
+        const peakKey = Object.entries(counts).reduce((a, b) => b[1] > a[1] ? b : a)[0];
+        const peakLabel = segments.find(s => s.key === peakKey).label;
+
+        const body = `
+            <div class="aag-tod-bar">${barHtml}</div>
+            <div class="aag-tod-columns">${columnsHtml}</div>
+            <div class="aag-intensity-caption" style="font-style:normal;">
+                <span style="color:var(--amber);font-weight:bold;">${peakLabel}</span> is your most active time.
+            </div>`;
+
+        return this._aagMakeCard('timelapse', 'Time of Day', body);
+    }
+
+    // Extracted from the _delta closure inside _renderAnalytics() so both
+    // Analytics and At a Glance can call it. Returns the same HTML string
+    // _delta() always returned — behavior-preserving extraction.
+    _computeDelta(curr, prev, lowerIsBetter = true, hasEnoughData = true) {
+        if (!hasEnoughData) return '';
+        if (prev === 0) return '';
+        const pct = Math.round(((curr - prev) / prev) * 100);
+        if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
+        const arrow = pct < 0 ? '↓' : '↑';
+        const isGood = lowerIsBetter ? pct < 0 : pct > 0;
+        const cls = isGood ? 'delta-green' : 'delta-red';
+        return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
+    }
+
     _getAnalyticsPeriodEntries() {
         const days   = this._analyticsPeriod || 30;
         const now    = new Date();
@@ -2732,8 +3971,8 @@ class CigLogTracker {
     }
 
     _todBinLabels() {
-        return ['12–2a','2–4a','4–6a','6–8a','8–10a','10a–12p',
-                '12–2p','2–4p','4–6p','6–8p','8–10p','10p–12a'];
+        return ['12 AM - 2 AM','2 AM - 4 AM','4 AM - 6 AM','6 AM -8 AM','8 AM - 10 AM','10 AM - 12 PM',
+                '12 PM - 2 PM','2 PM - 4 PM','4 PM - 6 PM','6 PM - 8 PM','8 PM - 10 PM','10 PM - 12AM'];
     }
 
     _triggerLabel(id) {
@@ -3281,16 +4520,8 @@ class CigLogTracker {
         const resRateDisplay = w7ResRate === null ? '—' : `${w7ResRate}%`;
         const estimatedDisplay = hasInferredData ? `(est. ${estimatedResisted} / ${estimatedRate}%)` : '';
 
-        const _delta = (curr, prev, lowerIsBetter = true) => {
-            if (!hasEnoughData) return '';            
-            if (prev === 0) return '';
-            const pct = Math.round(((curr - prev) / prev) * 100);
-            if (pct === 0) return '&nbsp;<span class="weekly-delta-bracket">[</span><span class="weekly-delta" style="color:var(--text-secondary);">-</span><span class="weekly-delta-bracket">]</span>';
-            const arrow = pct < 0 ? '↓' : '↑';
-            const isGood = lowerIsBetter ? pct < 0 : pct > 0;
-            const cls = isGood ? 'delta-green' : 'delta-red';
-            return ` <span class="weekly-delta-bracket">[</span><span class="weekly-delta ${cls}">${arrow}${Math.abs(pct)}%</span><span class="weekly-delta-bracket">]</span>`;
-        };
+        const _delta = (curr, prev, lowerIsBetter = true) =>
+            this._computeDelta(curr, prev, lowerIsBetter, hasEnoughData);
         
         const _deltaArrow = (curr, prev, lowerIsBetter = true) => {
             if (!hasEnoughData || prev === 0) return '';
@@ -3512,9 +4743,7 @@ class CigLogTracker {
                 <span id="calMonthLabel" class="pattern-month-label">${calMonthLabel}</span>
                 <button id="calNext" class="cal-nav-btn"><span class="ms">keyboard_arrow_right</span></button>
             </div>
-            <div class="cal-day-headers">
-                <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
-            </div>
+            
             <div id="calGrid" class="cal-grid"></div>
         `, 'Days with logged smoking activity are highlighted.'));
 
@@ -3657,80 +4886,7 @@ class CigLogTracker {
             pairBody = `<div class="trigger-pair-list">${items}</div>`;
         }
         content.appendChild(this._makeSection('join', 'Trigger Combinations', null, pairBody, 'Trigger pairs that frequently appear together. Minimum 5 combined events.'));
-
-        // 6. Time of day
-        content.appendChild(this._makeSection('schedule', 'Time of Day',
-            null, `
-            <div class="analytics-chart-container">
-                <canvas id="analyticsTimeOfDayChart"></canvas>
-            </div>
-        `, 'Cravings and smoking frequency by time of day, in 2-hour bins.'
-        ));
-
-        requestAnimationFrame(() => {
-            if (this._analyticsChart) { this._analyticsChart.destroy(); this._analyticsChart = null; }
-            const tod = this._computeTimeOfDay(entries);
-            const st  = this._chartStyle();
-            this._analyticsChart = new Chart(
-                document.getElementById('analyticsTimeOfDayChart').getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: this._todBinLabels(),
-                        datasets: [
-                            {
-                                label: 'Cravings',
-                                data: tod.cravings,
-                                backgroundColor: '#A6A6A6',
-                                borderColor: '#A6A6A6',
-                                borderWidth: 1,
-                                borderRadius: 3,
-                                barPercentage: 0.8,
-                            },
-                            {
-                                label: 'Smoked',
-                                data: tod.smoked,
-                                backgroundColor: '#F1976D',
-                                borderColor: '#F1976D',
-                                borderWidth: 1,
-                                borderRadius: 3,
-                                barPercentage: 0.8,
-                            },
-                        ],
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: { color: st.textPrimary, font: { family: st.font, size: 10 }, boxWidth: 10, padding: 8 },
-                            },
-                            tooltip: {
-                                backgroundColor: 'rgba(26,26,26,0.95)',
-                                titleColor: st.textPrimary,
-                                bodyColor: st.textPrimary,
-                                borderColor: 'rgba(217,217,217,0.25)',
-                                borderWidth: 1,
-                                cornerRadius: 6,
-                            },
-                        },
-                        scales: {
-                            x: {
-                                grid: { color: st.gridColor },
-                                ticks: { color: st.textSecond, maxRotation: 0, font: { family: st.font, size: 9 } },
-                            },
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: st.gridColor },
-                                ticks: { stepSize: 1, color: st.textSecond, font: { family: st.font, size: 10 } },
-                            },
-                        },
-                        animation: { duration: 400, easing: 'easeOutQuart' },
-                    },
-                }
-            );
-        });
+        
     }
 
     _renderMonthlyCalendar() {
@@ -3745,11 +4901,11 @@ class CigLogTracker {
             nextBtn.style.opacity = nextBtn.disabled ? '0.3' : '1';
         }
 
-        // First entry date
+        // First entry date (for muting pre‑history days)
         const sortedEntries = [...this.entries].sort((a, b) => this._toDate(a.date) - this._toDate(b.date));
         const firstEntryDate = sortedEntries.length ? this._toDate(sortedEntries[0].date) : now;
 
-        // Build a set of dates that have smoked entries
+        // Set of dates that have any smoked entries
         const smokedDates = new Set();
         this.entries.forEach(e => {
             if (e.smoked.reduce((s, x) => s + x.count, 0) > 0) smokedDates.add(e.date);
@@ -3759,17 +4915,22 @@ class CigLogTracker {
         const lastDay  = new Date(year, month + 1, 0);
         const today    = new Date(); today.setHours(0,0,0,0);
 
-        // Day of week of first day, Monday-based (0=Mon, 6=Sun)
+        // Day of week (Monday‑based: 0 = Monday, 6 = Sunday)
         let startDow = firstDay.getDay() - 1;
         if (startDow < 0) startDow = 6;
 
-        let cells = '';
+        // Build grid: first row = day headers
+        const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        let cells = daysOfWeek.map(day =>
+            `<div class="cal-cell cal-header">${day}</div>`
+        ).join('');
 
-        // Empty cells before first day
+        // Empty cells before the first day of the month
         for (let i = 0; i < startDow; i++) {
             cells += `<div class="cal-cell cal-empty"></div>`;
         }
 
+        // Date cells
         for (let d = 1; d <= lastDay.getDate(); d++) {
             const cellDate = new Date(year, month, d);
             cellDate.setHours(0,0,0,0);
@@ -3778,10 +4939,10 @@ class CigLogTracker {
             const yy   = String(year - 2000).padStart(2, '0');
             const dateStr = `${dd}-${mm}-${yy}`;
 
-            const isFuture   = cellDate > today;
+            const isFuture      = cellDate > today;
             const isBeforeFirst = cellDate < firstEntryDate;
-            const isSmoked   = smokedDates.has(dateStr);
-            const isToday    = cellDate.getTime() === today.getTime();
+            const isSmoked      = smokedDates.has(dateStr);
+            const isToday       = cellDate.getTime() === today.getTime();
 
             let cls = 'cal-cell';
             if (isFuture || isBeforeFirst) cls += ' cal-muted';
@@ -3795,21 +4956,29 @@ class CigLogTracker {
         const grid = document.getElementById('calGrid');
         if (grid) grid.innerHTML = cells;
 
+        // Update month label
         const label = document.getElementById('calMonthLabel');
-        if (label) label.textContent = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
-            .format(new Date(year, month));
+        if (label) {
+            label.textContent = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
+                .format(new Date(year, month));
+        }
 
-        if (prevBtn) prevBtn.onclick = () => {
-            if (this._calMonth === 0) { this._calMonth = 11; this._calYear--; }
-            else this._calMonth--;
-            this._renderMonthlyCalendar();
-        };
-        if (nextBtn) nextBtn.onclick = () => {
-            if (year === now.getFullYear() && month === now.getMonth()) return;
-            if (this._calMonth === 11) { this._calMonth = 0; this._calYear++; }
-            else this._calMonth++;
-            this._renderMonthlyCalendar();
-        };
+        // Navigation buttons (preserve existing behaviour)
+        if (prevBtn) {
+            prevBtn.onclick = () => {
+                if (this._calMonth === 0) { this._calMonth = 11; this._calYear--; }
+                else this._calMonth--;
+                this._renderMonthlyCalendar();
+            };
+        }
+        if (nextBtn) {
+            nextBtn.onclick = () => {
+                if (year === now.getFullYear() && month === now.getMonth()) return;
+                if (this._calMonth === 11) { this._calMonth = 0; this._calYear++; }
+                else this._calMonth++;
+                this._renderMonthlyCalendar();
+            };
+        }
     }
     
     _makeSection(icon, title, subtitle, bodyHtml, helpText = null) {
