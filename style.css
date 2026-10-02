@@ -2851,3 +2851,9 @@ body.aag-active .fixed-header {
     user-select: none;
     -webkit-touch-callout: none;
 }
+
+.trigger-chip:disabled,
+.trigger-chip.trigger-chip-linked {
+    opacity: 0.35;
+    cursor: not-allowed;
+}

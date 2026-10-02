@@ -919,6 +919,18 @@ class CigLogTracker {
         container.innerHTML = '';
         const frequent = this._computeFrequentTriggers();
         const custom   = (this.settings.customTriggers || []).filter(t => t && t.trim());
+        // Tracks which trigger IDs already have their "active" chip placed —
+        // a later duplicate (same trigger appearing again in Custom or its
+        // preset category) renders locked/greyed instead of a second
+        // independently-selectable copy.
+        const renderedIds = new Set();
+
+        const appendChip = (grid, t, selectedIds) => {
+            const isDuplicate = renderedIds.has(t.id);
+            const isSelected = selectedIds.includes(t.id);
+            grid.appendChild(this._makeChip(t, isSelected && !isDuplicate, container, isSelected && isDuplicate));
+            renderedIds.add(t.id);
+        };
 
         // Frequent section
         if (frequent.length) {
@@ -928,15 +940,19 @@ class CigLogTracker {
             const freqGrid = document.createElement('div');
             freqGrid.className = 'trigger-chip-grid';
             frequent.forEach(id => {
-                const t = TRIGGERS.find(t => t.id === id)
-                    || (custom.findIndex(c => c === id) !== -1 ? { id, label: id, icon: 'label' } : null);
-                if (t) freqGrid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
+                let t = TRIGGERS.find(t => t.id === id);
+                if (!t && id.startsWith('custom_')) {
+                    const ci = parseInt(id.replace('custom_', ''), 10);
+                    if (custom[ci]) t = { id, label: custom[ci], icon: 'label' };
+                }
+                if (t) appendChip(freqGrid, t, selectedIds);
             });
             container.appendChild(freqLabel);
             container.appendChild(freqGrid);
         }
 
-        // Custom section
+        // Custom section — no longer excludes Frequent overlap; duplicates
+        // stay in sync via _makeChip's linked-disable behavior instead.
         if (custom.length) {
             const custLabel = document.createElement('div');
             custLabel.className = 'trigger-group-label';
@@ -944,8 +960,7 @@ class CigLogTracker {
             const custGrid = document.createElement('div');
             custGrid.className = 'trigger-chip-grid';
             custom.forEach((label, i) => {
-                const t = { id: `custom_${i}`, label, icon: 'label' };
-                custGrid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
+                appendChip(custGrid, { id: `custom_${i}`, label, icon: 'label' }, selectedIds);
             });
             container.appendChild(custLabel);
             container.appendChild(custGrid);
@@ -959,20 +974,28 @@ class CigLogTracker {
             label.textContent = group.label;
             const grid = document.createElement('div');
             grid.className = 'trigger-chip-grid';
-            triggers.forEach(t => {
-                grid.appendChild(this._makeChip(t, selectedIds.includes(t.id)));
-            });
+            triggers.forEach(t => appendChip(grid, t, selectedIds));
             container.appendChild(label);
             container.appendChild(grid);
         });
     }
 
-    _makeChip(trigger, selected = false) {
+    _makeChip(trigger, selected = false, container = null, startDisabled = false) {
         const chip = document.createElement('button');
-        chip.className = `trigger-chip${selected ? ' selected' : ''}`;
+        chip.className = `trigger-chip${selected ? ' selected' : ''}${startDisabled ? ' trigger-chip-linked' : ''}`;
         chip.dataset.triggerId = trigger.id;
+        chip.disabled = startDisabled;
         chip.innerHTML = `<span class="ms">${trigger.icon}</span><span>${trigger.label}</span>`;
-        chip.addEventListener('click', () => chip.classList.toggle('selected'));
+        chip.addEventListener('click', () => {
+            const nowSelected = chip.classList.toggle('selected');
+            if (container) {
+                container.querySelectorAll(`.trigger-chip[data-trigger-id="${trigger.id}"]`).forEach(other => {
+                    if (other === chip) return;
+                    other.disabled = nowSelected;
+                    other.classList.toggle('trigger-chip-linked', nowSelected);
+                });
+            }
+        });
         return chip;
     }
 
@@ -4273,6 +4296,47 @@ class CigLogTracker {
         });
         if (changed) this._persist('settings');
     }
+    
+    // Renders the current 3-slot window from this._insightsOrder /
+    // this._insightsCursor into #analyticsInsightsBody, and wires the
+    // featured card's tap-to-cycle. Only ever touches this section's own
+    // DOM — never triggers a full Analytics re-render.
+    _renderInsightsWindow() {
+        const container = document.getElementById('analyticsInsightsBody');
+        if (!container) return;
+
+        const order = this._insightsOrder || [];
+        const total = order.length;
+        if (total === 0) return;
+
+        const windowSize = Math.min(3, total);
+        const cursor = this._insightsCursor || 0;
+        const visible = [];
+        for (let i = 0; i < windowSize; i++) {
+            visible.push(order[(cursor + i) % total]);
+        }
+
+        const [featuredText, ...secondaryTexts] = visible;
+        const cyclable = total > 3; // nothing to reveal below 3 total
+
+        const featuredHtml = `
+            <div class="insight-item insight-featured">
+                <span>${featuredText}</span>
+            </div>`;
+        const secondaryHtml = secondaryTexts.map(text => `
+            <div class="insight-item insight-secondary">
+                <span>${text}</span>
+            </div>`).join('');
+
+        container.innerHTML = featuredHtml + secondaryHtml;
+
+        if (cyclable) {
+            container.querySelector('.insight-featured').addEventListener('click', () => {
+                this._insightsCursor = (this._insightsCursor + 1) % total;
+                this._renderInsightsWindow();
+            });
+        }
+    }
 
     // --- Insight sentences ---
     _generateInsightSentences(entries, triggerStats) {
@@ -4808,7 +4872,12 @@ class CigLogTracker {
         `, 'Totals for the selected Deep Dive period.'
         ));
 
-        // 3. Insights
+        // 3. Insights — capped at 3 visible (featured + 2 secondary), with
+        // tap-to-cycle through anything beyond that. Priority order and the
+        // decay system are untouched by this — cycling only changes how many
+        // sentences are shown at once, never which one was auto-picked as
+        // featured or when. Cursor is session-local, not persisted: it
+        // resets to 0 on every render (period change, reopening the page).
         let insightBody;
         if (!sentences.length) {
             insightBody = '<p class="analytics-empty">Keep logging to see behavioural insights.</p>';
@@ -4827,21 +4896,20 @@ class CigLogTracker {
 
             const secondary = sentences
                 .filter(s => s.text !== featuredText)
-                .sort((a, b) => a.priority - b.priority);
+                .sort((a, b) => a.priority - b.priority)
+                .map(s => s.text);
 
-            const featuredHtml = featuredText ? `
-                <div class="insight-item insight-featured">
-                    <span>${featuredText}</span>
-                </div>` : '';
+            // Full cycle order: decay-picked featured stays first, then the
+            // rest by priority — cycling walks forward through this list,
+            // it never changes what was chosen as featured or its position.
+            this._insightsOrder = featuredText ? [featuredText, ...secondary] : secondary;
+            this._insightsCursor = 0;
 
-            const secondaryHtml = secondary.map(s => `
-                <div class="insight-item insight-secondary">
-                    <span>${s.text}</span>
-                </div>`).join('');
-
-            insightBody = `<div class="insight-list">${featuredHtml}${secondaryHtml}</div>`;
+            insightBody = `<div class="insight-list" id="analyticsInsightsBody"></div>`;
         }
-        content.appendChild(this._makeSection('lightbulb_2', 'Insights', null, insightBody, 'Behavioral insights based on your data in this period.'));
+        const insightsSection = this._makeSection('lightbulb_2', 'Insights', null, insightBody, 'Behavioral insights based on your data in this period.');
+        content.appendChild(insightsSection);
+        if (sentences.length) this._renderInsightsWindow();
 
         // 4. Trigger rankings (no bars — ranked text list)
         let triggerBody;
